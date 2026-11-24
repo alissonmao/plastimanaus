@@ -1,0 +1,10 @@
+<form class="card filtros" method="get">
+  <label>De<input type="date" name="de" value="{{ filtros.de|date:'Y-m-d' }}"></label>
+  <label>Até<input type="date" name="ate" value="{{ filtros.ate|date:'Y-m-d' }}"></label>
+  <label>Setor<select name="setor" multiple>{% for s in filtros.op_setores %}<option value="{{ s.pk }}" {% if s.pk|stringformat:'s' in filtros.setores %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  <label>Máquina<select name="maquina" multiple>{% for s in filtros.op_maquinas %}<option value="{{ s.pk }}" {% if s.pk|stringformat:'s' in filtros.maquinas %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  <label>Turno<select name="turno" multiple>{% for s in filtros.op_turnos %}<option value="{{ s.pk }}" {% if s.pk|stringformat:'s' in filtros.turnos %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  <label>Produto<select name="produto" multiple>{% for s in filtros.op_produtos %}<option value="{{ s.pk }}" {% if s.pk|stringformat:'s' in filtros.produtos %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  {% block extra %}{% endblock %}
+  <button class="btn">Filtrar</button> <a class="btn sec" href="?">Limpar</a>
+</form>

@@ -1,0 +1,16 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<form class="card filtros" method="get">
+  <label>De<input type="date" name="de" value="{{ filtros.de|date:'Y-m-d' }}"></label>
+  <label>Até<input type="date" name="ate" value="{{ filtros.ate|date:'Y-m-d' }}"></label>
+  <label>Agrupar por<select name="por">{% for k, v in opcoes.items %}<option value="{{ k }}" {% if k == por %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+  <label>Setor<select name="setor" multiple>{% for s in filtros.op_setores %}<option value="{{ s.pk }}" {% if s.pk|stringformat:'s' in filtros.setores %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+  <button class="btn">Gerar</button><a class="btn sec" href="?{{ request.GET.urlencode }}&exportar=1">Exportar Excel</a>
+</form>
+{% include "erp/_kpis_producao.html" %}
+<div class="card tabela"><table>
+<tr><th>{{ opcoes|item:por }}</th><th class="n">OK kg</th><th class="n">Apara</th><th class="n">Alça</th><th class="n">Borra</th><th class="n">Perdas</th><th class="n">% Perdas</th><th class="n">Total</th><th class="n">Milheiro</th><th class="n">Horas trab.</th><th class="n">Utilização</th><th class="n">Apont.</th></tr>
+{% for g in grupos %}<tr><td>{{ g.grupo }}</td><td class="n">{{ g.ok|num }}</td><td class="n">{{ g.apara|num }}</td><td class="n">{{ g.alca|num }}</td><td class="n">{{ g.borra|num }}</td><td class="n neg">{{ g.perdas|num }}</td><td class="n neg">{{ g.pct_perdas|pct }}</td><td class="n">{{ g.total|num }}</td><td class="n">{{ g.milheiro|num:0 }}</td><td class="n">{{ g.horas_trab|num:1 }}</td><td class="n">{{ g.util|pct }}</td><td class="n">{{ g.n }}</td></tr>{% endfor %}
+<tr class="total"><td>Total</td><td class="n">{{ tot.ok|num }}</td><td class="n">{{ tot.apara|num }}</td><td class="n">{{ tot.alca|num }}</td><td class="n">{{ tot.borra|num }}</td><td class="n neg">{{ tot.perdas|num }}</td><td class="n neg">{{ tot.pct_perdas|pct }}</td><td class="n">{{ tot.total|num }}</td><td class="n">{{ tot.milheiro|num:0 }}</td><td class="n">{{ tot.horas_trab|num:1 }}</td><td class="n">{{ tot.util|pct }}</td><td class="n">{{ tot.n }}</td></tr>
+</table></div>
+{% endblock %}

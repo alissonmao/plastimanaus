@@ -1,0 +1,7 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="card"><p>{{ modelo }}</p>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="file" name="arquivo" accept=".xlsx,.xlsm,.csv" required> <button class="btn">Importar</button>
+{% if voltar %}<a class="btn sec" href="{{ voltar }}">Voltar</a>{% endif %}</form></div>
+{% if erros %}<div class="card"><h2>Linhas com problema ({{ erros|length }})</h2><ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% endblock %}

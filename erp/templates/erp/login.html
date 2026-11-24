@@ -1,0 +1,6 @@
+{% load static %}<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entrar · Plasti Manaus</title><link rel="stylesheet" href="{% static 'css/erp.css' %}"></head><body>
+<div class="login card"><img src="{% static 'img/logo.png' %}" alt="Plasti Manaus"><h2 style="text-align:center">ERP Plasti Manaus</h2>
+<form method="post" class="form">{% csrf_token %}{% if form.errors %}<div class="msg error">Usuário ou senha inválidos.</div>{% endif %}
+<p><label>Usuário</label>{{ form.username }}</p><p><label>Senha</label>{{ form.password }}</p>
+<input type="hidden" name="next" value="{{ next }}"><button class="btn" style="width:100%">Entrar</button></form></div></body></html>

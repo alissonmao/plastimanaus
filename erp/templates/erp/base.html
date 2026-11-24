@@ -1,0 +1,21 @@
+{% load static %}<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ titulo }} · Plasti Manaus</title>
+<link rel="icon" href="{% static 'img/logo.png' %}"><link rel="stylesheet" href="{% static 'css/erp.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/graficos.js' %}"></script>
+</head><body><div class="app">
+<nav class="side">
+  <div class="logo"><img src="{% static 'img/logo.png' %}" alt="Plasti Manaus"></div>
+  <h6>Produção</h6>{% for it in menu_producao %}<a href="{{ it.url }}" class="{% if it.ativo %}on{% endif %}"><span>{{ it.icone }}</span>{{ it.label }}</a>{% endfor %}
+  <h6>Cadastros</h6>{% for it in menu_cadastros %}<a href="{{ it.url }}" class="{% if it.ativo %}on{% endif %}"><span>{{ it.icone }}</span>{{ it.label }}</a>{% endfor %}
+  <h6>Sistema</h6>{% if user.is_staff %}<a href="/admin/">⚙️ Administração</a>{% endif %}
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<div class="user">{{ user.get_full_name|default:user.username }} · <button class="btn sec" style="padding:2px 8px">Sair</button></div></form>
+</nav>
+<main>
+  <h1>{{ titulo }}</h1>
+  {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
+  {% block conteudo %}{% endblock %}
+</main></div>
+{% block scripts %}{% endblock %}
+</body></html>

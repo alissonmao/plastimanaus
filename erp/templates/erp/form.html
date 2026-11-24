@@ -1,0 +1,6 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="card"><form method="post" class="form">{% csrf_token %}{{ form.as_p }}
+<div class="acoes"><button class="btn">Salvar</button><a class="btn sec" href="{{ voltar }}">Cancelar</a>
+{% if obj %}<button class="btn danger" name="excluir" value="1" onclick="return confirm('Excluir este registro?')">Excluir</button>{% endif %}</div></form></div>
+{% endblock %}

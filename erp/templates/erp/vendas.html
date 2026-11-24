@@ -1,0 +1,35 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="acoes"><a class="btn sec" href="{% url 'vendas_importar' %}">Importar planilha</a><a class="btn sec" href="?{{ request.GET.urlencode }}&exportar=1">Exportar Excel</a></div>
+<form class="card filtros" method="get">{% include "erp/_periodo.html" %}
+  <label>Linha<select name="linha" multiple>{% for l in op_linhas %}<option {% if l in linhas_sel %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Vendedor<select name="vendedor" multiple>{% for l in op_vendedores %}<option {% if l in vend_sel %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Cliente/produto<input name="q" value="{{ q }}" placeholder="buscar"></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a></form>
+<div class="kpis">
+  <div class="kpi"><small>Faturamento</small><b>{{ tot.faturamento|brl }}</b></div>
+  <div class="kpi"><small>Kg sacola/bobina</small><b>{{ tot.kg|num:0 }}</b></div>
+  <div class="kpi"><small>R$/kg sacola/bobina</small><b>{{ tot.rs_kg|brl }}</b></div>
+  <div class="kpi"><small>Clientes</small><b>{{ tot.clientes }}</b></div>
+  <div class="kpi"><small>Ticket médio/cliente</small><b>{{ tot.ticket|brl }}</b></div>
+  <div class="kpi"><small>Produtos / itens</small><b>{{ tot.produtos }} / {{ tot.itens }}</b></div>
+</div>
+<div class="card"><h2>Faturamento por período e linha · R$/kg</h2><div class="chart alto"><canvas id="gSerie"></canvas></div></div>
+<div class="grid g2">
+  <div class="card"><h2>Por linha</h2><div class="chart"><canvas id="gLinha"></canvas></div></div>
+  <div class="card"><h2>Por cor</h2><div class="chart"><canvas id="gCor"></canvas></div></div>
+  <div class="card"><h2>Top clientes</h2>{% include "erp/_ranking.html" with rk=rk_cli rotulo="Cliente" %}</div>
+  <div class="card"><h2>Top produtos</h2>{% include "erp/_ranking.html" with rk=rk_prod rotulo="Produto" %}</div>
+  <div class="card"><h2>Vendedores</h2>{% include "erp/_ranking.html" with rk=rk_vend rotulo="Vendedor" %}</div>
+  <div class="card"><h2>Estados</h2>{% include "erp/_ranking.html" with rk=rk_uf rotulo="UF" %}</div>
+</div>
+<div class="card"><h2>Últimos itens (até 200)</h2><div class="tabela"><table><tr><th>Data</th><th>Cliente</th><th>Produto</th><th>Linha</th><th class="n">Qtd</th><th class="n">Kg</th><th class="n">Total</th><th>Vendedor</th><th>Cidade/UF</th></tr>
+{% for v in itens %}<tr><td>{{ v.data|date:"d/m/Y" }}</td><td>{{ v.cliente|truncatechars:40 }}</td><td>{{ v.produto|truncatechars:40 }}</td><td>{{ v.linha }}</td><td class="n">{{ v.quantidade|num }}</td><td class="n">{{ v.kg|num }}</td><td class="n {% if v.total < 0 %}neg{% endif %}">{{ v.total|brl }}</td><td>{{ v.vendedor|default:"" }}</td><td>{{ v.cidade|default:"" }}/{{ v.estado|default:"" }}</td></tr>{% endfor %}
+</table></div></div>
+{% endblock %}
+{% block scripts %}<script>
+const G = {{ graf|safe }};
+barras("gSerie", G.serie.labels, [...G.serie.series, {nome:"R$/kg", valores:G.serie.rs_kg, tipo:"line", eixo:"y2", cor:"#111"}], {empilhado:true, moeda:true, y2:true});
+rosca("gLinha", G.linha.labels, G.linha.valores, {moeda:true});
+rosca("gCor", G.cor.labels, G.cor.valores, {moeda:true});
+</script>{% endblock %}

@@ -1,0 +1,9 @@
+{% load fmt %}<div class="kpis">
+  <div class="kpi"><small>Produzido OK</small><b>{{ tot.ok|num:0 }} kg</b></div>
+  <div class="kpi"><small>Perdas</small><b class="neg">{{ tot.perdas|num:0 }} kg</b></div>
+  <div class="kpi"><small>% Perdas</small><b class="neg">{{ tot.pct_perdas|pct }}</b></div>
+  <div class="kpi"><small>Total geral</small><b>{{ tot.total|num:0 }} kg</b></div>
+  <div class="kpi"><small>Milheiros</small><b>{{ tot.milheiro|num:0 }}</b></div>
+  <div class="kpi"><small>Utilização (máq. c/ capacidade)</small><b>{{ tot.util|pct }}</b></div>
+  <div class="kpi"><small>Apontamentos / parados</small><b>{{ tot.n }} / {{ tot.parados }}</b></div>
+</div>

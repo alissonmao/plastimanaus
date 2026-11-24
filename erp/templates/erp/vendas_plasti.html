@@ -1,0 +1,33 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="acoes"><a class="btn sec" href="/admin/erp/vendaplasti/">Gerenciar pedidos</a><a class="btn sec" href="/admin/erp/metavendedor/">Metas por vendedor</a></div>
+<form class="card filtros" method="get">{% include "erp/_periodo.html" %}
+  <label>Vendedor<select name="vendedor" multiple>{% for l in op_vendedores %}<option {% if l in vend_sel %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Pagamento<select name="pagamento"><option value="">Todos</option>{% for l in op_pagamentos %}<option {% if l == pagamento %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Cliente<input name="q" value="{{ q }}"></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a></form>
+<div class="kpis">
+  <div class="kpi"><small>Vendido</small><b>{{ kpis.total|brl }}</b></div>
+  <div class="kpi"><small>Meta do período</small><b>{{ kpis.meta|brl }}</b></div>
+  <div class="kpi"><small>Atingimento</small><b class="{% if kpis.atingimento and kpis.atingimento >= 1 %}ok{% else %}neg{% endif %}">{{ kpis.atingimento|pct }}</b></div>
+  <div class="kpi"><small>Pedidos</small><b>{{ kpis.pedidos }}</b></div>
+  <div class="kpi"><small>Ticket médio</small><b>{{ kpis.ticket|brl }}</b></div>
+  <div class="kpi"><small>Clientes</small><b>{{ kpis.clientes }}</b></div>
+  <div class="kpi"><small>% à vista</small><b>{{ kpis.pct_vista|pct }}</b></div>
+</div>
+<div class="card"><h2>Realizado × meta (dias úteis)</h2><div class="chart alto"><canvas id="gSerie"></canvas></div></div>
+<div class="grid g2">
+  <div class="card"><h2>Realizado × meta por vendedor</h2><div class="tabela"><table><tr><th>Vendedor</th><th class="n">Realizado</th><th class="n">Meta</th><th class="n">Ating.</th></tr>
+  {% for v in vendedores %}<tr><td>{{ v.0 }}</td><td class="n">{{ v.1|brl }}</td><td class="n">{{ v.2|brl }}</td><td class="n {% if v.3 and v.3 >= 1 %}ok{% else %}neg{% endif %}">{{ v.3|pct }}</td></tr>{% endfor %}</table></div></div>
+  <div class="card"><h2>Forma de pagamento</h2><div class="chart"><canvas id="gPag"></canvas></div></div>
+  <div class="card"><h2>Top clientes</h2>{% include "erp/_ranking.html" with rk=rk_cli rotulo="Cliente" %}</div>
+  <div class="card"><h2>Pedidos</h2><div class="tabela" style="max-height:420px"><table><tr><th>Data</th><th>Nº</th><th>Cliente</th><th>Vendedor</th><th class="n">Valor</th><th>Pagamento</th><th>Status</th></tr>
+  {% for p in pedidos %}<tr><td>{{ p.data_pedido|date:"d/m/Y" }}</td><td>{{ p.numero_pedido|default:"" }}</td><td>{{ p.cliente|truncatechars:32 }}</td><td>{{ p.vendedor }}</td><td class="n">{{ p.valor|brl }}</td><td>{{ p.forma_pagamento }}</td><td>{{ p.status|default:"" }}</td></tr>{% endfor %}</table></div></div>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+const G = {{ graf|safe }};
+barras("gSerie", G.serie.labels, [{nome:"Realizado", valores:G.serie.valor}, {nome:"Meta", valores:G.serie.meta, cor:"#c9d6ce"},
+  {nome:"Acumulado", valores:G.serie.acumulado, tipo:"line", eixo:"y2", cor:"#0f7a3d"}, {nome:"Meta acumulada", valores:G.serie.meta_acumulada, tipo:"line", eixo:"y2", cor:"#f2994a"}], {moeda:true, y2:true});
+rosca("gPag", G.pag.labels, G.pag.valores, {moeda:true});
+</script>{% endblock %}

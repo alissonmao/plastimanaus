@@ -1,0 +1,7 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="acoes"><a class="btn" href="{% url 'cadastro_novo' nome %}">+ Novo</a></div>
+<div class="card tabela"><table><tr>{% for c in colunas %}<th>{{ c }}</th>{% endfor %}<th></th></tr>
+{% for o, valores in itens %}<tr>{% for v in valores %}<td>{{ v|default_if_none:"" }}</td>{% endfor %}<td><a href="{% url 'cadastro_editar' nome o.pk %}">Editar</a></td></tr>
+{% empty %}<tr><td colspan="9">Nenhum registro.</td></tr>{% endfor %}</table></div>
+{% endblock %}

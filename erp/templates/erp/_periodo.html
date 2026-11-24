@@ -1,0 +1,3 @@
+<label>De<input type="date" name="de" value="{{ de|date:'Y-m-d' }}"></label>
+<label>Até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>
+<label>Agrupar<select name="g">{% for k, v in granularidades %}<option value="{{ k }}" {% if k == g %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>

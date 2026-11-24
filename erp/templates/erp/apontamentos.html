@@ -1,0 +1,13 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="acoes"><a class="btn" href="{% url 'apontamento_novo' %}">+ Novo apontamento</a><a class="btn sec" href="{% url 'apontamentos_importar' %}">Importar planilha</a><a class="btn sec" href="?{{ request.GET.urlencode }}&exportar=1">Exportar Excel</a></div>
+{% include "erp/_filtros_producao.html" %}
+{% include "erp/_kpis_producao.html" %}
+<div class="card tabela"><table>
+<tr><th>Data</th><th>Turno</th><th>Máquina</th><th>Produto</th><th>Cor</th><th>Tipo</th><th class="n">Lar</th><th class="n">Comp</th><th class="n">Esp</th><th>OP</th><th>Cliente</th><th class="n">OK kg</th><th class="n">Apara</th><th class="n">Alça</th><th class="n">Borra</th><th class="n">Total</th><th class="n">Milheiro</th><th class="n">Util.</th><th>Obs</th></tr>
+{% for l in linhas %}<tr><td><a href="{% url 'apontamento_editar' l.a.pk %}">{{ l.a.data|date:"d/m/Y D" }}</a></td><td>{{ l.turno }}</td><td>{{ l.maquina }}</td><td>{{ l.produto }}</td><td>{{ l.cor }}</td><td>{{ l.tipo }}</td>
+<td class="n">{{ l.a.largura_mm|num:0 }}</td><td class="n">{{ l.a.comprimento_mm|num:0 }}</td><td class="n">{{ l.a.espessura_mm|num:4 }}</td><td>{{ l.a.op|default:"" }}</td><td>{{ l.cliente }}</td>
+<td class="n">{{ l.ok|num }}</td><td class="n">{{ l.apara|num }}</td><td class="n">{{ l.alca|num }}</td><td class="n">{{ l.borra|num }}</td><td class="n">{{ l.total|num }}</td><td class="n">{{ l.a.qtd_milheiro|num:0 }}</td><td class="n">{{ l.util|pct }}</td><td>{{ l.a.observacao|default:"" }}</td></tr>
+{% empty %}<tr><td colspan="19">Nenhum apontamento no período.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}
