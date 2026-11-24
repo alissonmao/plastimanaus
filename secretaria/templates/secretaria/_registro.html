@@ -1,0 +1,17 @@
+<div class="reg-cab">{% if r.tipo %}<span class="tipo t-{{ r.tipo }}">{{ r.get_tipo_display }}</span>{% else %}<span class="tipo">sem classificação</span>{% endif %}
+  {% if r.empresa %}<b>{{ r.empresa }}</b>{% endif %}{% if r.assunto %} · {{ r.assunto }}{% endif %}
+  {% if r.pontuacao %}<span class="estrelas" title="Importância {{ r.pontuacao }} de 5">{% for i in "12345" %}{% if forloop.counter <= r.pontuacao %}★{% else %}☆{% endif %}{% endfor %}</span>{% endif %}
+  {% if r.resolvido %}<span class="tag ok">resolvido</span>{% endif %}
+  <small>{{ r.criado_em|date:"d/m/Y H:i" }}{% if r.origem != 'site' %} · {{ r.get_origem_display }}{% endif %}</small></div>
+<div class="reg-txt">{{ r.texto|linebreaksbr }}</div>
+<form method="post" action="{% url 'sec_diario_acao' r.pk %}" class="reg-acoes">{% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+  {% if r.tipo == 'problema' or r.tipo == 'tarefa' %}<button name="acao" value="resolver" class="lnk">{% if r.resolvido %}reabrir{% else %}✓ marcar resolvido{% endif %}</button>{% endif %}
+  <button name="acao" value="reclassificar" class="lnk">{% if r.classificado_em %}reclassificar{% else %}classificar{% endif %}</button>
+  <details class="corrigir"><summary class="lnk">corrigir</summary>
+    <select name="tipo">{% for k, v in tipos %}<option value="{{ k }}" {% if r.tipo == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    <input name="empresa" value="{{ r.empresa }}" placeholder="Empresa" list="lista-empresas" size="12">
+    <select name="pontuacao">{% for n in "12345" %}<option {% if r.pontuacao|stringformat:'s' == n %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+    <button name="acao" value="corrigir" class="btn sec">ok</button></details>
+  <button name="acao" value="excluir" class="lnk perigo" onclick="return confirm('Apagar este registro?')">apagar</button>
+  {% if r.erro_ia and not r.classificado_em %}<small class="helptext">{{ r.erro_ia }}</small>{% endif %}
+</form>

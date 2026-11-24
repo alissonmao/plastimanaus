@@ -9,6 +9,11 @@ MENU = [
     ("Painel", "🏠", [("sec_painel", "Painel", None)]),
     ("Secretaria", "🗓️", [
         ("sec_caixa", "E-mail", None),
+        ("sec_agenda", "Agenda", None),
+        ("sec_lembretes", "Lembretes", None),
+        ("sec_diario", "Diário", None),
+        ("sec_angel", "Angel", None),
+        ("sec_preferencias", "Configurações", None),
     ]),
     ("Financeiro", "💰", [
         ("fluxo_caixa", "Visão geral", None),
@@ -61,5 +66,9 @@ def menu(request):
             l["ativo"] = len(l["url"]) == max(len(x["url"]) for x in ativos)
         secoes.append(dict(titulo=titulo, icone=icone, itens=links, aberta=any(l["ativo"] for l in links), direto=titulo == "Painel"))
     if request.user.is_staff:
+        url = reverse("sec_integracoes")
+        secoes[-1]["itens"].append(dict(url=url, label="Integrações (chaves)", ativo=path.startswith(url)))
+        if secoes[-1]["itens"][-1]["ativo"]:
+            secoes[-1]["aberta"] = True
         secoes[-1]["itens"].append(dict(url="/admin/", label="Administração", ativo=False))
-    return {"menu": secoes}
+    return {"menu": secoes, "tem_secretaria": secretaria}

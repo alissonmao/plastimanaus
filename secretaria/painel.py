@@ -1,6 +1,6 @@
-"""Painel do dia: resumo da Secretaria (e-mails por empresa e prioridade; lembretes e agenda nas próximas fases).
+"""Painel do dia: e-mails por empresa e prioridade, lembretes, agenda de hoje e pendências do diário.
 
-Até a triagem por IA (fase 4), a prioridade é decidida por palavras-chave no assunto e no remetente.
+A prioridade vem da triagem por IA; sem ela (ou antes de rodar), das palavras-chave no assunto e no remetente.
 """
 from datetime import datetime
 
@@ -52,7 +52,9 @@ def classificar(r):
 
 
 def _coletar(usuario, contas):
+    from .triagem import categorias_do_painel
     empresas, erros, nao_lidos = {}, [], 0
+    por_ia = categorias_do_painel(usuario)
     for c in contas:
         try:
             with M.Caixa(c) as cx:
@@ -65,7 +67,7 @@ def _coletar(usuario, contas):
             continue
         emp = empresas.setdefault(c.empresa, dict(nome=c.empresa, cats={k: [] for k, *_ in CATEGORIAS}, propaganda=[]))
         for r in itens:
-            k = classificar(r)
+            k = por_ia.get((str(c.pk), str(r.uid))) or classificar(r)
             item = dict(conta=str(c.pk), uid=r.uid, assunto=r.assunto, de=r.de_nome, de_email=r.de_email,
                         data=r.data, lido=r.lido, empresa=c.empresa)
             (emp["propaganda"] if k == "propaganda" else emp["cats"][k]).append(item)
@@ -90,7 +92,11 @@ def painel(request):
         for k in tot:
             tot[k] += len(e["cats"][k])
         e["sigla"] = "".join(p[0] for p in e["nome"].split()[:2]).upper()
+    from . import agenda, diario, lembretes
+    from .configuracoes import perfil_de
+    perfil = perfil_de(request.user)
     return render(request, "secretaria/painel.html", dict(
+        lemb=lembretes.resumo(request.user), ag=agenda.resumo_hoje(perfil), pendencias=diario.pendencias(request.user, 5),
         titulo="Painel", saudacao=f"{saud}, {request.user.first_name or request.user.username}",
         data_extenso=f"{DIAS[agora.weekday()]}, {agora.day} de {MESES[agora.month - 1]}",
         tot=tot, sem_contas=not contas, **dados))

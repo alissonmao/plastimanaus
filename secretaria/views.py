@@ -238,6 +238,9 @@ def escrever(request):
                 inicial.update(para=para, cc=cc, assunto=_prefixo("Re: ", original.assunto),
                                corpo=_assinatura(conta) + _citar(original), em_resposta_a=original.message_id,
                                referencias=original.referencias, origem_pasta=pasta, origem_uid=uid)
+                rasc = request.GET.get("rascunho") and cache.get(f"sec-rascunho-{request.user.pk}-{request.GET['rascunho']}")
+                if rasc:  # rascunho preparado pela Angel: o usuário revisa e envia
+                    inicial["corpo"] = rasc + "\n" + _citar(original)
         else:
             c = contas.filter(pk=inicial["conta"]).first()
             inicial["corpo"] = _assinatura(c)

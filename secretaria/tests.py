@@ -240,7 +240,7 @@ class EmailTest(TestCase):
         r = self.c.post("/secretaria/email/sugerir/", dict(conta=conta.pk, uid=1, pasta="INBOX"))
         self.assertEqual(r.status_code, 400)
         resp = SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text="Olá João, envio hoje.")])
-        with override_settings(ANTHROPIC_API_KEY="teste"), mock.patch("anthropic.resources.beta.messages.Messages.create", return_value=resp) as cr:
+        with override_settings(ANTHROPIC_API_KEY="teste"), mock.patch("secretaria.config.obter", lambda n: "teste" if n == "ANTHROPIC_API_KEY" else ""), mock.patch("anthropic.resources.beta.messages.Messages.create", return_value=resp) as cr:
             r = self.c.post("/secretaria/email/sugerir/", dict(conta=conta.pk, uid=1, pasta="INBOX", instrucao="confirmar entrega"))
         self.assertEqual(r.status_code, 200, r.content)
         self.assertTrue(r.json()["texto"].startswith("Olá João, envio hoje."))

@@ -1,0 +1,48 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+{% if not conectado %}<div class="card"><p class="embreve">Conecte a agenda do iPhone (iCloud) para ver e criar compromissos aqui.</p><a class="btn" href="{% url 'sec_preferencias' %}">Conectar agenda</a></div>
+{% else %}
+{% if erro %}<div class="msg error">{{ erro }}</div>{% endif %}
+<div class="agenda">
+<div>
+  <div class="cab-lista"><h2 class="secao">{% if dia_sel %}{{ dia_sel|date:"l, d/m/Y" }} <a class="helptext" href="{% url 'sec_agenda' %}">ver próximos 30 dias</a>{% else %}Próximos 30 dias{% endif %}</h2>
+    <div class="acoes"><button class="btn" onclick="novoEvento()">+ Compromisso</button><a class="btn sec" href="?atualizar=1">⟳</a></div></div>
+  {% for dia, evs in grupos %}<div class="card dia-ev"><div class="dia-t">{% if dia == hoje %}Hoje{% else %}{{ dia|date:"l" }}{% endif %}, <b>{{ dia|date:"d/m" }}</b></div>
+    {% for e in evs %}<div class="ev" data-ev='{"uid":"{{ e.uid|escapejs }}","cal":"{{ e.calendario|escapejs }}","titulo":"{{ e.titulo|escapejs }}","data":"{{ e.inicio|date:"Y-m-d" }}","hi":"{{ e.inicio|time:"H:i" }}","hf":"{{ e.fim|time:"H:i" }}","todo":{{ e.dia_todo|yesno:"true,false" }},"local":"{{ e.local|escapejs }}","desc":"{{ e.descricao|escapejs }}","rec":{{ e.recorrente|yesno:"true,false" }}}' onclick="editarEvento(this)">
+      <div class="hora">{% if e.dia_todo %}dia todo{% else %}{{ e.inicio|time:"H:i" }}<small>{{ e.fim|time:"H:i" }}</small>{% endif %}</div>
+      <div class="corpo"><div class="t">{{ e.titulo }}{% if e.recorrente %} <span title="Repete">🔁</span>{% endif %}</div>
+        <div class="s">{% if e.local %}📍 {{ e.local }} · {% endif %}{{ e.calendario_nome }}</div></div></div>{% endfor %}
+  </div>{% empty %}<div class="card"><p class="embreve">Nenhum compromisso {% if dia_sel %}neste dia{% else %}nos próximos 30 dias{% endif %}.</p></div>{% endfor %}
+</div>
+<aside>
+  <div class="card mini-cal"><div class="mc-cab"><a href="?mes={{ mes_ant }}">‹</a><b>{{ ref|date:"F Y" }}</b><a href="?mes={{ mes_prox }}">›</a></div>
+  <table><tr>{% for d in "DSTQQSS" %}<th>{{ d }}</th>{% endfor %}</tr>
+  {% for s in semanas %}<tr>{% for d in s %}<td><a href="?dia={{ d.d|date:'Y-m-d' }}&mes={{ ref|date:'Y-m' }}" class="{% if d.fora %}fora{% endif %} {% if d.tem %}tem{% endif %} {% if d.hoje %}hoje{% endif %} {% if d.d == dia_sel %}sel{% endif %}">{{ d.d.day }}</a></td>{% endfor %}</tr>{% endfor %}</table>
+  <p class="helptext">Dias em <span style="color:var(--danger);font-weight:700">vermelho</span> têm compromisso.</p></div>
+  <p class="helptext">Você recebe aviso no WhatsApp 1 hora antes de cada compromisso. Pelo WhatsApp: “Angel, marca reunião quinta às 10h”.</p>
+</aside>
+</div>
+
+<dialog id="dlg-ev" class="dlg"><form method="post" action="{% url 'sec_agenda_salvar' %}" class="form">{% csrf_token %}
+  <h2 id="dlg-tit">Novo compromisso</h2><input type="hidden" name="uid"><input type="hidden" name="cal_origem">
+  <p id="aviso-rec" class="msg" hidden>Compromisso repetitivo: para mudar ou apagar, use o iPhone.</p>
+  <p>{{ form.titulo.label_tag }}{{ form.titulo }}</p>
+  <div class="linha"><p>{{ form.data.label_tag }}{{ form.data }}</p><p>{{ form.hora_inicio.label_tag }}{{ form.hora_inicio }}</p><p>{{ form.hora_fim.label_tag }}{{ form.hora_fim }}</p></div>
+  <p><label class="chk">{{ form.dia_todo }} Dia inteiro</label></p>
+  <p>{{ form.local.label_tag }}{{ form.local }}</p><p>{{ form.descricao.label_tag }}{{ form.descricao }}</p>
+  <p id="p-cal">{{ form.calendario.label_tag }}{{ form.calendario }}</p>
+  <div class="acoes"><button class="btn" id="b-salvar">Salvar</button><button type="button" class="btn sec" onclick="this.closest('dialog').close()">Cancelar</button>
+    <button class="btn danger" name="excluir" value="1" id="b-excluir" hidden onclick="return confirm('Apagar este compromisso? Ele some também do iPhone.')">Apagar</button></div>
+</form></dialog>
+<script>
+const dlg=document.getElementById('dlg-ev'),F=dlg.querySelector('form');
+function novoEvento(){F.reset();F.uid.value='';F.cal_origem.value='';document.getElementById('dlg-tit').textContent='Novo compromisso';
+ document.getElementById('b-excluir').hidden=true;document.getElementById('p-cal').hidden=false;document.getElementById('aviso-rec').hidden=true;
+ document.getElementById('b-salvar').hidden=false;{% if dia_sel %}F.data.value='{{ dia_sel|date:"Y-m-d" }}';{% endif %}dlg.showModal()}
+function editarEvento(el){const e=JSON.parse(el.dataset.ev);F.reset();F.uid.value=e.uid;F.cal_origem.value=e.cal;F.titulo.value=e.titulo;F.data.value=e.data;
+ F.hora_inicio.value=e.todo?'':e.hi;F.hora_fim.value=e.todo?'':e.hf;F.dia_todo.checked=e.todo;F.local.value=e.local;F.descricao.value=e.desc;
+ document.getElementById('dlg-tit').textContent='Editar compromisso';document.getElementById('p-cal').hidden=true;
+ document.getElementById('aviso-rec').hidden=!e.rec;document.getElementById('b-excluir').hidden=e.rec;document.getElementById('b-salvar').hidden=e.rec;dlg.showModal()}
+</script>
+{% endif %}
+{% endblock %}

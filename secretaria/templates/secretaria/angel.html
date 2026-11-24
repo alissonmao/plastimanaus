@@ -1,0 +1,34 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="grid g2" style="align-items:start">
+<div class="card"><h2>Fale com a Angel</h2>
+  <p>Clique no microfone 🎙️ no canto da tela (ou <b>segure a barra de espaço</b>) e fale. Ela responde em voz.</p>
+  <p>Marque <b>modo conversa</b> no balão para ela ficar ouvindo: comece com <b>“Angel, …”</b>. Enquanto ela fala, é só falar por cima para interromper.</p>
+  <p class="helptext">Exemplos: “Angel, o que tenho hoje?” · “marca reunião com o contador quinta às 10h” · “me lembra de pagar o DAS dia 20 às 9h” ·
+    “anota no diário: a extrusora 2 parou por falta de resina” · “quais e-mails importantes chegaram?” · “prepara uma resposta para o e-mail do banco”.</p>
+  <p class="helptext">A Angel não apaga nada e não envia e-mail: rascunhos ficam no site para você revisar e enviar.</p>
+  <div class="acoes"><button class="btn sec" onclick="ouvirBriefing(this)">▶ Ouvir briefing agora</button></div>
+</div>
+<div class="card"><h2>Situação</h2>
+  <ul class="status-lista">
+    <li class="{% if ia %}ok{% else %}pend{% endif %}">IA (Anthropic): {% if ia %}ativa{% else %}falta a chave{% endif %}</li>
+    <li class="{% if voz_eleven %}ok{% else %}pend{% endif %}">Voz: {% if voz_eleven %}ElevenLabs{% else %}Microsoft Edge (Francisca) — falta a chave/voz da ElevenLabs{% endif %}</li>
+    <li class="{% if whatsapp %}ok{% else %}pend{% endif %}">WhatsApp do Angel: {% if whatsapp %}conectado ({{ numero }}){% else %}ainda não instalado/pareado{% endif %}</li>
+    <li class="{% if perfil.whatsapp %}ok{% else %}pend{% endif %}">Seu WhatsApp: {% if perfil.whatsapp %}{{ perfil.whatsapp }}{% else %}não cadastrado{% endif %} · <a href="{% url 'sec_preferencias' %}">configurar</a></li>
+  </ul>
+  {% if user.is_staff %}<p class="helptext"><a href="{% url 'sec_integracoes' %}">Sistema → Integrações</a> para colocar ou trocar as chaves.</p>{% endif %}
+  <form method="post">{% csrf_token %}<button class="btn sec" name="teste" value="1">Enviar mensagem de teste no WhatsApp</button></form>
+</div>
+</div>
+{% if ui_url and user.is_staff %}<div class="card" style="margin-top:14px"><h2>Painel do OpenClaw</h2><iframe src="{{ ui_url }}" style="width:100%;height:640px;border:1px solid var(--border);border-radius:8px"></iframe></div>{% endif %}
+<div class="card" style="margin-top:14px"><h2>Últimos avisos</h2>
+<div class="tabela"><table><tr><th>Quando</th><th>Tipo</th><th>Mensagem</th><th>Situação</th></tr>
+{% for a in avisos %}<tr><td>{{ a.criada_em|date:"d/m H:i" }}</td><td>{{ a.get_tipo_display }}</td><td style="white-space:pre-line;max-width:520px">{{ a.texto|truncatechars:240 }}</td>
+<td>{% if a.situacao == 'enviada' %}<span class="tag ok">enviada {{ a.enviada_em|date:"H:i" }}</span>{% elif a.situacao == 'pendente' %}<span class="tag">na fila</span>{% elif a.situacao == 'expirada' %}<span class="tag vazio" title="O WhatsApp não estava conectado a tempo">expirada</span>{% elif a.situacao == 'sem_canal' %}<span class="tag vazio">sem WhatsApp</span>{% else %}<span class="tag erro" title="{{ a.erro }}">erro</span>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="4" class="helptext">Nenhum aviso ainda.</td></tr>{% endfor %}</table></div></div>
+<script>
+async function ouvirBriefing(b){b.disabled=true;const t=b.textContent;b.textContent='Preparando…';
+ try{const j=await (await fetch('{% url "sec_briefing" %}')).json();b.textContent='Falando…';await window.AngelFalar(j.texto);}catch(e){alert('Não consegui preparar o briefing.')}
+ b.disabled=false;b.textContent=t}
+</script>
+{% endblock %}

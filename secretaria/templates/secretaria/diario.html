@@ -1,0 +1,36 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="diario">
+<div>
+  <div class="card"><form method="post" class="form escrever" id="f-diario">{% csrf_token %}{{ form.texto }}<input type="hidden" name="por_voz" id="por-voz">
+    <div class="acoes" style="margin-top:8px"><button class="btn">Registrar</button>
+      <button type="button" class="btn sec mic-btn" id="b-ditar" title="Falar em vez de digitar">🎙️ Ditar</button>
+      {% if not ia %}<small class="helptext">A IA ainda não está configurada: os registros ficam sem classificação até lá.</small>{% endif %}</div></form></div>
+
+  {% if problemas %}<div class="card abertos"><h2>⚠️ Problemas e tarefas em aberto</h2>
+    {% for r in problemas %}<div class="reg aberto">{% include "secretaria/_registro.html" %}</div>{% endfor %}</div>{% endif %}
+
+  <form class="filtros card" method="get">
+    <select name="tipo"><option value="">Todos os tipos</option>{% for k, v in tipos %}<option value="{{ k }}" {% if f.tipo == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    <select name="empresa"><option value="">Todas as empresas</option>{% for e in empresas %}<option {% if f.empresa == e %}selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+    <input type="date" name="de" value="{{ f.de }}" title="De"><input type="date" name="ate" value="{{ f.ate }}" title="Até">
+    <select name="min"><option value="">Qualquer importância</option>{% for n in "2345" %}<option value="{{ n }}" {% if f.min == n %}selected{% endif %}>{{ n }}+ ★</option>{% endfor %}</select>
+    <input name="q" value="{{ f.q }}" placeholder="Buscar texto">
+    <label class="chk"><input type="checkbox" name="abertos" value="1" {% if f.abertos %}checked{% endif %}> Só em aberto</label>
+    <button class="btn sec">Filtrar</button>{% if filtrando %}<a href="{% url 'sec_diario' %}">limpar</a>{% endif %}
+  </form>
+  <div class="card">{% for r in registros %}<div class="reg {% if r.tipo == 'problema' and not r.resolvido %}aberto{% endif %}">{% include "secretaria/_registro.html" %}</div>
+  {% empty %}<p class="embreve">Nenhum registro{% if filtrando %} com esses filtros{% endif %}.</p>{% endfor %}</div>
+</div>
+<aside>
+  <div class="card"><h2>Análise semanal</h2>
+    <p class="helptext">Toda segunda às 8h chega no WhatsApp a análise da semana anterior.</p>
+    <form method="post" action="{% url 'sec_diario_analisar' %}">{% csrf_token %}<input type="hidden" name="inicio" value="{{ semana|date:'Y-m-d' }}">
+      <button class="btn sec" {% if not ia %}disabled title="Precisa da chave da Anthropic"{% endif %}>Gerar agora (semana de {{ semana|date:"d/m" }})</button></form>
+    {% for a in analises %}<details class="analise" {% if forloop.first %}open{% endif %}><summary>Semana {{ a.inicio|date:"d/m" }} a {{ a.fim|date:"d/m" }}</summary><div>{{ a.texto|linebreaksbr }}</div></details>{% endfor %}
+  </div>
+</aside>
+</div>
+<datalist id="lista-empresas">{% for e in empresas %}<option value="{{ e }}">{% endfor %}</datalist>
+<script>document.addEventListener("DOMContentLoaded",()=>Ditado(document.getElementById("b-ditar"),document.getElementById("diario-texto"),()=>document.getElementById("por-voz").value="1"));</script>
+{% endblock %}

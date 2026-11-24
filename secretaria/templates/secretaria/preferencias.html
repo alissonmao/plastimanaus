@@ -1,0 +1,22 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+{% if not https %}<div class="msg error">Esta página não está em HTTPS: a senha do iCloud não pode ser salva.</div>{% endif %}
+<form method="post" class="form">{% csrf_token %}
+<div class="grid g2" style="align-items:start">
+<div class="card"><h2>WhatsApp e avisos</h2>
+  {% for f in form %}{% if f.name != 'icloud_usuario' and f.name != 'icloud_senha' %}<p>{% if f.field.widget.input_type == 'checkbox' %}<label class="chk">{{ f }} {{ f.label|capfirst }}</label>{% else %}{{ f.label_tag }}{{ f }}{% endif %}
+    {% if f.help_text %}<span class="helptext">{{ f.help_text }}</span>{% endif %}{% for e in f.errors %}<span class="erro">{{ e }}</span>{% endfor %}</p>{% endif %}{% endfor %}
+  {% if perfil.whatsapp %}<p class="helptext">O Angel aceita: {{ perfil.whatsapp_variantes|join:" ou " }}.</p>{% endif %}
+  {% if angel_numero %}<p class="helptext">Número do Angel: <b>{{ angel_numero }}</b>. Salve no celular como “Angel”.</p>{% else %}<p class="helptext">O número do Angel ainda não foi cadastrado em Sistema → Integrações.</p>{% endif %}
+</div>
+<div class="card"><h2>Agenda do iPhone (iCloud)</h2>
+  <p>{{ form.icloud_usuario.label_tag }}{{ form.icloud_usuario }}</p>
+  <p>{{ form.icloud_senha.label_tag }}{{ form.icloud_senha }}<span class="helptext">{{ form.icloud_senha.help_text }}{% if perfil.icloud_senha_cifrada %} <b>Senha já salva.</b>{% endif %}</span></p>
+  {% if cals %}<p><label>Calendários que aparecem na agenda</label><input type="hidden" name="cal_form" value="1">{% for c in cals %}<label class="chk"><input type="checkbox" name="calendarios" value="{{ c.url }}" {% if not perfil.agenda_calendarios or c.url in perfil.agenda_calendarios %}checked{% endif %}> {{ c.nome }}</label>{% endfor %}</p>
+  <p><label>Onde criar os compromissos novos</label><select name="agenda_padrao">{% for c in cals %}<option value="{{ c.url }}" {% if c.url == perfil.agenda_padrao %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</select></p>{% endif %}
+  {% if perfil.icloud_senha_cifrada %}<button class="btn sec" name="remover_icloud" value="1" onclick="return confirm('Desconectar a agenda do iCloud?')">Desconectar iCloud</button>{% endif %}
+</div>
+</div>
+<div class="acoes" style="margin-top:14px"><button class="btn">Salvar</button></div>
+</form>
+{% endblock %}

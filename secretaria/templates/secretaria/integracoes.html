@@ -1,0 +1,31 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+{% if not https %}<div class="msg error">Esta página não está em HTTPS: não é possível salvar chaves.</div>{% endif %}
+<p class="helptext" style="max-width:760px">Aqui ficam as chaves dos serviços que a Secretaria e o Angel usam. Elas são guardadas <b>criptografadas</b> no banco e nunca aparecem inteiras na tela.
+Se uma chave for revogada no site do serviço, cole a nova aqui e clique em <b>Testar</b>. Ao remover daqui, lembre de revogar também no site do serviço.</p>
+<div class="grid g2">
+{% for l in linhas %}<div class="card integ">
+  <div class="cab"><h2>{{ l.titulo }}</h2>
+    {% if l.definido %}{% if l.obj.ultimo_erro %}<span class="tag erro">com erro</span>{% elif l.obj.testado_em %}<span class="tag ok">funcionando</span>{% else %}<span class="tag">definida</span>{% endif %}{% else %}<span class="tag vazio">não definida</span>{% endif %}</div>
+  <p class="helptext">{{ l.ajuda }}</p>
+  {% if l.definido %}<p class="valor"><code>{{ l.mostra }}</code> <small>({{ l.origem }}{% if l.obj.atualizado_em and l.origem == 'ERP' %} · trocada em {{ l.obj.atualizado_em|date:"d/m/Y H:i" }}{% if l.obj.atualizado_por %} por {{ l.obj.atualizado_por }}{% endif %}{% endif %})</small></p>{% endif %}
+  {% if l.obj.ultimo_erro %}<p class="msg error">{{ l.obj.ultimo_erro }}</p>{% elif l.obj.testado_em %}<p class="helptext">Testada em {{ l.obj.testado_em|date:"d/m/Y H:i" }}.</p>{% endif %}
+  <form method="post" class="linha">{% csrf_token %}<input type="hidden" name="nome" value="{{ l.nome }}">
+    {% if l.nome == 'ANGEL_TOKEN' %}
+      <button class="btn" name="acao" value="gerar" onclick="return confirm('Gerar um novo token? O antigo para de funcionar.')">{% if l.definido %}Gerar novo (revoga o atual){% else %}Gerar token{% endif %}</button>
+    {% else %}
+      <input name="valor" type="{% if l.secreto %}password{% else %}text{% endif %}" autocomplete="off" placeholder="{% if l.definido %}Colar novo valor para trocar{% else %}Colar aqui{% endif %}">
+      <button class="btn" name="acao" value="salvar">Salvar</button>
+    {% endif %}
+    {% if l.definido and l.testavel %}<button class="btn sec" name="acao" value="testar">Testar</button>{% endif %}
+    {% if l.definido and l.origem == 'ERP' %}<button class="btn sec" name="acao" value="remover" onclick="return confirm('Remover esta chave do ERP?')">Remover</button>{% endif %}
+  </form>
+</div>{% endfor %}
+</div>
+<div class="card" style="margin-top:14px"><h2>Situação dos serviços</h2>
+<ul class="helptext" style="line-height:1.8">
+  <li>IA (rascunhos, triagem, diário, Angel): {% if ia %}<b class="ok">ativa</b>{% else %}aguardando a chave da Anthropic — enquanto isso, a triagem usa palavras-chave{% endif %}.</li>
+  <li>Voz: {% if voz_eleven %}<b class="ok">ElevenLabs</b>{% else %}Microsoft Edge (Francisca) até a chave da ElevenLabs ser cadastrada{% endif %}. A OpenAI não é usada.</li>
+  <li>WhatsApp do Angel: {% if whatsapp %}<b class="ok">conectado</b>{% else %}ainda não instalado/pareado no servidor — os avisos ficam guardados e expiram após 2 horas{% endif %}.</li>
+</ul></div>
+{% endblock %}

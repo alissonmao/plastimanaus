@@ -1,0 +1,21 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="grid" style="grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);align-items:start">
+<div>
+  <div class="tabs"><a href="?ver=pendentes" class="{% if ver != 'concluidos' %}on{% endif %}">Pendentes</a><a href="?ver=concluidos" class="{% if ver == 'concluidos' %}on{% endif %}">Concluídos</a></div>
+  <div class="card">
+  {% for l in lembretes %}<div class="lemb {% if l.atrasado %}atrasado{% endif %} {% if l.concluido_em %}feito{% endif %}">
+    {% if not l.concluido_em %}<form method="post" action="{% url 'sec_lembrete_concluir' l.pk %}">{% csrf_token %}<button class="check" title="Concluir"></button></form>{% else %}<span class="check ok">✓</span>{% endif %}
+    <div class="corpo"><a href="{% url 'sec_lembrete_editar' l.pk %}" class="t">{{ l.titulo }}</a>
+      <div class="s">{% if l.atrasado %}Atrasado — {% elif l.hoje %}Hoje — {% endif %}{{ l.quando|date:"D, d/m/Y H:i" }}{% if l.repeticao %} · 🔁 {{ l.get_repeticao_display }}{% endif %}{% if l.origem != 'site' %} · via {{ l.get_origem_display }}{% endif %}{% if l.concluido_em %} · concluído {{ l.concluido_em|date:"d/m H:i" }}{% endif %}</div>
+      {% if l.notas %}<div class="s">{{ l.notas|linebreaksbr }}</div>{% endif %}</div>
+    {% if not l.concluido_em %}<form method="post" action="{% url 'sec_lembrete_adiar' l.pk %}" class="adiar">{% csrf_token %}
+      <select name="minutos" onchange="this.form.submit()"><option value="">Adiar…</option><option value="15">15 min</option><option value="60">1 hora</option><option value="180">3 horas</option><option value="1440">Amanhã</option></select></form>{% endif %}
+  </div>{% empty %}<p class="embreve">Nenhum lembrete {% if ver == 'concluidos' %}concluído{% else %}pendente{% endif %}.</p>{% endfor %}
+  </div>
+</div>
+<div class="card"><h2>+ Novo lembrete</h2><form method="post" action="{% url 'sec_lembrete_novo' %}" class="form">{% csrf_token %}{{ form.as_p }}
+  <button class="btn">Criar lembrete</button></form>
+  <p class="helptext" style="margin-top:10px">Você recebe o aviso no WhatsApp na hora marcada (quando o Angel estiver conectado). Também dá para criar falando: “Angel, me lembra de ligar pro contador amanhã às 9h”.</p></div>
+</div>
+{% endblock %}

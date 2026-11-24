@@ -1,10 +1,15 @@
 {% extends "erp/base.html" %}
-{% block titulo_pagina %}{% endblock %}
+{% block titulo_pagina %}<script>
+async function ouvirBriefing(b){b.disabled=true;const t=b.textContent;b.textContent='Preparando…';
+ try{const j=await (await fetch('{% url "sec_briefing" %}')).json();b.textContent='■ Falando…';await window.AngelFalar(j.texto);}catch(e){alert('Não consegui preparar o briefing.')}
+ b.disabled=false;b.textContent=t}
+</script>
+{% endblock %}
 {% block conteudo %}
 <div class="painel-top">
   <div><h1>{{ saudacao }}</h1><div class="data">{{ data_extenso }}</div></div>
   <div class="lado"><div class="acoes">
-    <button class="btn sec" disabled title="Chega na fase de voz">▶ Ouvir briefing</button>
+    <button class="btn sec" onclick="ouvirBriefing(this)">▶ Ouvir briefing</button>
     <a class="btn sec" href="?atualizar=1">⟳ Atualizar</a></div>
     {% if lido_em %}<small>E-mails lidos às {{ lido_em|time:"H:i" }}</small>{% endif %}</div>
 </div>
@@ -14,8 +19,8 @@
   <div><a href="#resumo"><b>{{ tot.financeiro }}</b><span>Financeiros</span></a></div>
   <div><a href="#resumo"><b>{{ tot.responder }}</b><span>Aguardando resposta</span></a></div>
   <div><a href="{% url 'sec_caixa' %}"><b>{{ nao_lidos }}</b><span>E-mails não lidos</span></a></div>
-  <div><b>–</b><span>Lembretes hoje</span><em style="color:var(--muted)">em breve</em></div>
-  <div><b>–</b><span>Compromissos hoje</span><em style="color:var(--muted)">em breve</em></div>
+  <div><a href="{% url 'sec_lembretes' %}"><b>{{ lemb.hoje }}</b><span>Lembretes hoje</span>{% if lemb.atrasados %}<em class="vermelho">{{ lemb.atrasados }} atrasado{{ lemb.atrasados|pluralize }}</em>{% endif %}</a></div>
+  <div><a href="{% url 'sec_agenda' %}"><b>{% if ag.conectado %}{{ ag.lista|length }}{% else %}–{% endif %}</b><span>Compromissos hoje</span>{% if not ag.conectado %}<em style="color:var(--muted)">conectar iCloud</em>{% endif %}</a></div>
 </div>
 <div class="painel-grid">
   <div id="resumo"><h2 class="secao">Resumo do dia</h2>
@@ -30,14 +35,30 @@
     {% if e.propaganda %}<details class="propaganda"><summary>🛒 {{ e.propaganda|length }} propaganda{{ e.propaganda|pluralize }} / avisos automáticos</summary>
       {% for i in e.propaganda %}<a class="pi lido" href="{% url 'sec_ler' i.conta i.uid %}?conta={{ i.conta }}"><div class="t">{{ i.assunto }}</div><div class="s">{{ i.de }} — {{ i.data|date:"d/m H:i" }}</div></a>{% endfor %}</details>{% endif %}
   </div>{% endfor %}
-  <p class="helptext">Prioridades separadas por palavras-chave no assunto. Na fase de triagem a IA passa a fazer essa separação.</p>
+  <p class="helptext">Prioridades da triagem por IA (de hora em hora, das 8h às 18h). E-mails ainda não triados usam palavras-chave.</p>
   </div>
   <div>
-    <div class="lado-card"><div class="cab"><h2>Lembretes</h2></div><p class="embreve">Os lembretes chegam na fase 6: criar pelo site ou pelo WhatsApp, com aviso na hora.</p></div>
-    <div class="lado-card"><div class="cab"><h2>Agenda de hoje</h2></div><p class="embreve">A agenda do iPhone (iCloud) chega na fase 5, com aviso 1 hora antes de cada compromisso.</p></div>
+    <div class="lado-card"><div class="cab"><h2>Lembretes</h2><a href="{% url 'sec_lembretes' %}">Ver todos</a></div>
+      {% for l in lemb.lista %}<div class="lemb {% if l.atrasado %}atrasado{% endif %}">
+        <form method="post" action="{% url 'sec_lembrete_concluir' l.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="{% url 'sec_painel' %}"><button class="check" title="Concluir"></button></form>
+        <div class="corpo"><div class="t">{{ l.titulo }}</div><div class="s">{% if l.atrasado %}Atrasado — {% endif %}{{ l.quando|date:"d/m H:i" }}</div></div></div>
+      {% empty %}<p class="embreve">Nada para hoje.</p>{% endfor %}
+      <a class="btn sec" href="{% url 'sec_lembretes' %}">+ Novo lembrete</a></div>
+    <div class="lado-card"><div class="cab"><h2>Agenda de hoje</h2><a href="{% url 'sec_agenda' %}">Abrir agenda</a></div>
+      {% if not ag.conectado %}<p class="embreve">Conecte a agenda do iPhone para ver seus compromissos aqui.</p><a class="btn sec" href="{% url 'sec_preferencias' %}">Conectar iCloud</a>
+      {% elif ag.erro %}<p class="msg error">{{ ag.erro }}</p>
+      {% else %}{% for e in ag.lista %}<div class="ev"><div class="hora">{% if e.dia_todo %}dia{% else %}{{ e.inicio|time:"H:i" }}{% endif %}</div><div class="corpo"><div class="t">{{ e.titulo }}</div>{% if e.local %}<div class="s">📍 {{ e.local }}</div>{% endif %}</div></div>
+      {% empty %}<p class="embreve">Nenhum compromisso hoje.</p>{% endfor %}{% endif %}</div>
+    {% if pendencias %}<div class="lado-card"><div class="cab"><h2>Diário: em aberto</h2><a href="{% url 'sec_diario' %}?abertos=1">Ver</a></div>
+      {% for r in pendencias %}<a class="pi" href="{% url 'sec_diario' %}?abertos=1"><div class="t">{{ r.resumo|default:r.texto|truncatechars:90 }}</div><div class="s">{{ r.get_tipo_display }}{% if r.empresa %} · {{ r.empresa }}{% endif %}{% if r.pontuacao %} · {{ r.pontuacao }}★{% endif %}</div></a>{% endfor %}</div>{% endif %}
     <div class="lado-card"><div class="cab"><h2>E-mail</h2><a href="{% url 'sec_caixa' %}">Abrir caixa</a></div>
       <p class="embreve">{{ nao_lidos }} não lido{{ nao_lidos|pluralize }} em {{ empresas|length }} conta{{ empresas|length|pluralize }}.</p>
       <a class="btn" href="{% url 'sec_escrever' %}">✉️ Escrever</a></div>
   </div>
 </div>
+<script>
+async function ouvirBriefing(b){b.disabled=true;const t=b.textContent;b.textContent='Preparando…';
+ try{const j=await (await fetch('{% url "sec_briefing" %}')).json();b.textContent='■ Falando…';await window.AngelFalar(j.texto);}catch(e){alert('Não consegui preparar o briefing.')}
+ b.disabled=false;b.textContent=t}
+</script>
 {% endblock %}

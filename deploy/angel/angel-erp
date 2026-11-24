@@ -1,0 +1,36 @@
+#!/opt/plastimanaus/.venv/bin/python
+"""Ponte OpenClaw → ERP: repassa a mensagem do WhatsApp para a API da Secretaria e imprime a resposta em JSON."""
+import argparse
+import json
+import os
+import sys
+
+import requests
+
+ERP = os.environ.get("ERP_URL", "http://127.0.0.1:8001")
+TOKEN_ARQ = os.path.expanduser("~/.openclaw/erp-token")
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("acao", choices=["mensagem", "briefing"])
+    p.add_argument("--de", required=True)
+    p.add_argument("--texto", default="")
+    p.add_argument("--audio")
+    a = p.parse_args()
+    token = os.environ.get("ANGEL_TOKEN") or open(TOKEN_ARQ).read().strip()
+    dados = {"de": a.de, "texto": a.texto}
+    if a.audio:
+        dados["audio_arquivo"] = os.path.abspath(a.audio)
+    r = requests.post(f"{ERP}/secretaria/api/angel/{a.acao}/", json=dados, timeout=300,
+                      headers={"Authorization": f"Bearer {token}", "Host": "erp.alissonia.cloud", "X-Forwarded-Proto": "https"})
+    try:
+        out = r.json()
+    except ValueError:
+        out = {"resposta": "O ERP não respondeu direito. Tente de novo em instantes."}
+    print(json.dumps(out, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

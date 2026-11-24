@@ -2,6 +2,8 @@
 import anthropic
 from django.conf import settings
 
+from . import config
+
 SISTEMA = """Você é a secretaria executiva de {nome}, na empresa {empresa}. Escreva o rascunho da resposta
 ao e-mail recebido, em português do Brasil, em nome de {nome}.
 
@@ -19,8 +21,52 @@ class ErroIA(Exception):
     pass
 
 
+def cliente_ia(timeout=90.0):
+    return anthropic.Anthropic(api_key=config.obter("ANTHROPIC_API_KEY"), timeout=timeout, max_retries=2)
+
+
+def modelo():
+    return settings.SECRETARIA_MODELO
+
+
+def json_ia(sistema: str, pedido: str, schema: dict, max_tokens=2000, effort="low"):
+    """Pergunta à IA e recebe JSON validado pelo schema (structured outputs)."""
+    import json
+    if not disponivel():
+        raise ErroIA("A IA ainda não está configurada (falta a chave da Anthropic em Sistema → Integrações).")
+    try:
+        resp = cliente_ia().beta.messages.create(
+            model=modelo(), max_tokens=max_tokens, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+            output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
+            system=sistema, messages=[{"role": "user", "content": pedido}])
+    except anthropic.APIError as e:
+        raise ErroIA(f"Falha na IA: {type(e).__name__}") from e
+    if resp.stop_reason == "refusal":
+        raise ErroIA("A IA recusou o pedido.")
+    texto = "".join(b.text for b in resp.content if b.type == "text")
+    try:
+        return json.loads(texto)
+    except ValueError as e:
+        raise ErroIA("A IA devolveu uma resposta fora do formato.") from e
+
+
+def texto_ia(sistema: str, pedido: str, max_tokens=3000, effort="low") -> str:
+    """Pergunta simples à IA, resposta em texto."""
+    if not disponivel():
+        raise ErroIA("A IA ainda não está configurada (falta a chave da Anthropic em Sistema → Integrações).")
+    try:
+        resp = cliente_ia().beta.messages.create(
+            model=modelo(), max_tokens=max_tokens, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+            output_config={"effort": effort}, system=sistema, messages=[{"role": "user", "content": pedido}])
+    except anthropic.APIError as e:
+        raise ErroIA(f"Falha na IA: {type(e).__name__}") from e
+    if resp.stop_reason == "refusal":
+        raise ErroIA("A IA recusou o pedido.")
+    return "".join(b.text for b in resp.content if b.type == "text").strip()
+
+
 def disponivel() -> bool:
-    return bool(settings.ANTHROPIC_API_KEY)
+    return bool(config.obter("ANTHROPIC_API_KEY"))
 
 
 def sugerir_resposta(conta, usuario, mensagem, instrucao="", rascunho_atual=""):
@@ -36,10 +82,10 @@ def sugerir_resposta(conta, usuario, mensagem, instrucao="", rascunho_atual=""):
         pedido += f"Rascunho atual (melhore a partir dele):\n{rascunho_atual}\n\n"
     if conta.assinatura:
         pedido += f"Assinatura:\n{conta.assinatura}\n"
-    cliente = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=90.0, max_retries=2)
+    cliente = cliente_ia()
     try:
         resp = cliente.beta.messages.create(
-            model=settings.SECRETARIA_MODELO,
+            model=modelo(),
             max_tokens=4000,
             betas=["server-side-fallback-2026-07-01"],
             fallbacks="default",

@@ -11,8 +11,16 @@ grep -q '^SECRETARIA_CHAVE=.\+' .env || echo "SECRETARIA_CHAVE=$(.venv/bin/pytho
 .venv/bin/python manage.py migrate --noinput
 .venv/bin/python manage.py collectstatic --noinput -v0
 chown -R plastimanaus:www-data /opt/plastimanaus
-cp deploy/omie-sync.service deploy/omie-sync.timer /etc/systemd/system/
+cp deploy/omie-sync.service deploy/omie-sync.timer deploy/secretaria-rotinas.service deploy/secretaria-rotinas.timer /etc/systemd/system/
 systemctl daemon-reload
+# Rotinas da Secretaria (lembretes, agenda, triagem, briefing): sempre ligadas; sem WhatsApp os avisos só ficam registrados
+systemctl enable --now secretaria-rotinas.timer >/dev/null 2>&1 || true
+# Angel instalado? Reinstala a habilidade e a configuração a cada publicação
+if id plastimanaus >/dev/null 2>&1 && sudo -u plastimanaus bash -lc 'command -v openclaw' >/dev/null 2>&1; then
+  install -m 755 deploy/angel/angel-erp /usr/local/bin/angel-erp
+  sudo -u plastimanaus HOME=/home/plastimanaus .venv/bin/python manage.py angel_config || true
+  sudo -u plastimanaus XDG_RUNTIME_DIR=/run/user/$(id -u plastimanaus) systemctl --user restart openclaw-gateway >/dev/null 2>&1 || true
+fi
 # Sincronização diária só quando OMIE_SYNC_AUTO=1 no .env
 if grep -q '^OMIE_SYNC_AUTO=1' .env; then systemctl enable --now omie-sync.timer >/dev/null 2>&1 || true
 else systemctl disable --now omie-sync.timer >/dev/null 2>&1 || true; fi
