@@ -196,7 +196,7 @@ def buscar_fluxo(de: date, ate: date) -> list[dict]:
         dep = max(mov.get("departamentos") or [{}], key=lambda x: x.get("nDistrValor") or 0).get("cCodDepartamento")
         pago = dec(r.get("nValPago"))
         rows.append(dict(
-            fornecedor=cli.get("razao_social") or cli.get("nome_fantasia") or "—",
+            fornecedor=cli.get("nome_fantasia") or cli.get("razao_social") or "—",  # igual à exportação do Omie
             categoria=categoria, grupo=grupo,
             data_emissao=data_omie(d.get("dDtEmissao")) or data_omie(d.get("dDtRegistro")) or de,
             data_pagamento=data_omie(d.get("dDtPagamento")) if pago else None,

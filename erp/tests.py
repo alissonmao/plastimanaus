@@ -59,7 +59,7 @@ class OmieTest(TestCase):
         omie.sincronizar(date(2026, 11, 1), date(2026, 11, 30), saida=lambda *_: None)
         rec = FluxoCaixa.objects.get(tipo=omie.TIPO_RECEBER)
         self.assertEqual((rec.fornecedor, rec.categoria, rec.grupo, rec.situacao, rec.valor_conta, rec.valor_pago, rec.conta_corrente),
-                         ("ATACADAO LTDA", "Venda de produtos", "Receitas", "Recebido", 1000, 1000, "Itaú"))
+                         ("Atacadão", "Venda de produtos", "Receitas", "Recebido", 1000, 1000, "Itaú"))
         pag = FluxoCaixa.objects.get(tipo=omie.TIPO_PAGAR)
         self.assertEqual((pag.fornecedor, pag.grupo, pag.situacao, pag.valor_conta, pag.departamento, pag.data_pagamento),
                          ("FUNCIONARIO X", "Despesas com Pessoal", "Atrasado", -300, "Produção", None))
