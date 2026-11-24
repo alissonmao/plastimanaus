@@ -50,9 +50,13 @@ def chamar(endpoint: str, call: str, param: dict, tentativas: int = 4) -> dict:
         msg = dados.get("faultstring") or r.text[:300]
         if "Não existem registros" in msg or "nao existem registros" in msg.lower():
             return {}
-        # Limite de requisições / consumo redundante: espera e tenta de novo
-        if r.status_code in (425, 429, 500, 502, 503) or "REDUNDANT" in msg or "bloqueada" in msg.lower():
-            time.sleep(5 * (t + 1))
+        # Consumo redundante (mesma chamada em < 60 s): o Omie exige esperar 1 minuto
+        if "REDUNDANT" in msg or "redundante" in msg.lower():
+            time.sleep(62)
+            continue
+        # Limite de requisições / instabilidade: espera e tenta de novo
+        if r.status_code in (425, 429, 500, 502, 503) or "bloqueada" in msg.lower():
+            time.sleep(10 * (t + 1))
             continue
         raise OmieErro(f"{call}: {msg}")
     raise OmieErro(f"{call}: Omie não respondeu após {tentativas} tentativas")
@@ -93,6 +97,24 @@ def dec(v) -> Decimal:
 
 
 # --------------------------------------------------------------------- cadastros auxiliares
+_CACHE: dict = {}
+
+
+def em_cache(func):
+    """Guarda o resultado durante o processo (o Omie recusa a mesma consulta repetida em < 60 s)."""
+    def wrap():
+        if func.__name__ not in _CACHE:
+            _CACHE[func.__name__] = func()
+        return _CACHE[func.__name__]
+    wrap.__name__ = func.__name__
+    return wrap
+
+
+def limpar_cache():
+    _CACHE.clear()
+
+
+@em_cache
 def mapa_categorias():
     cats = {c["codigo"]: c for c in paginar("geral/categorias/", "ListarCategorias", "categoria_cadastro")}
     out = {}
@@ -102,24 +124,29 @@ def mapa_categorias():
     return out  # codigo -> (categoria, grupo)
 
 
+@em_cache
 def mapa_clientes():
     return {c["codigo_cliente_omie"]: c for c in paginar("geral/clientes/", "ListarClientes", "clientes_cadastro",
                                                           {"apenas_importado_api": "N"}, por_pagina=50)}
 
 
+@em_cache
 def mapa_contas():
     return {c["nCodCC"]: c.get("descricao", "") for c in paginar(
         "geral/contacorrente/", "ListarResumoContasCorrentes", "conta_corrente_lista", {"apenas_importado_api": "N"})}
 
 
+@em_cache
 def mapa_departamentos():
     return {d["codigo"]: d.get("descricao", "") for d in paginar("geral/departamentos/", "ListarDepartamentos", "departamentos")}
 
 
+@em_cache
 def mapa_vendedores():
     return {v["codigo"]: v.get("nome", "") for v in paginar("geral/vendedores/", "ListarVendedores", "cadastro")}
 
 
+@em_cache
 def mapa_produtos():
     return {p["codigo_produto"]: p for p in paginar("geral/produtos/", "ListarProdutos", "produto_servico_cadastro",
                                                      {"apenas_importado_api": "N", "filtrar_apenas_omiepdv": "N"}, por_pagina=50)}
@@ -246,6 +273,7 @@ def substituir(modelo, campo_data, de, ate, rows, manter=None):
 def sincronizar(de: date, ate: date, fluxo=True, vendas=True, saida=print) -> str:
     if not configurado():
         raise OmieErro("Defina OMIE_APP_KEY e OMIE_APP_SECRET no .env do servidor")
+    limpar_cache()
     partes = []
     if fluxo:
         rows = buscar_fluxo(de, ate)

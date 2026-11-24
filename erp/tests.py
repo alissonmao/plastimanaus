@@ -47,6 +47,7 @@ def falso(endpoint, call, param, tentativas=4):
 @override_settings(OMIE_APP_KEY="k", OMIE_APP_SECRET="s")
 class OmieTest(TestCase):
     def setUp(self):
+        omie.limpar_cache()
         # histórico de planilha: define linha/grupo/cor e kg por unidade do SCRA22
         Venda.objects.create(data=date(2026, 9, 1), cliente="A", produto="SCRA22 - SACOLA AZUL", linha="Sacola", grupo="22 KG",
                              cor="AZUL", total=10, kg=Decimal("20"), quantidade=Decimal("10"))
