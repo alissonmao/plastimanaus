@@ -269,3 +269,19 @@ class FluxoCaixa(Base):
         ordering = ["data_emissao"]
         verbose_name = "lançamento"
         verbose_name_plural = "fluxo de caixa"
+
+
+class SincronizacaoOmie(models.Model):
+    inicio = models.DateTimeField(auto_now_add=True)
+    fim = models.DateTimeField(null=True, blank=True)
+    de = models.DateField()
+    ate = models.DateField()
+    status = models.CharField(max_length=20, default="rodando")  # rodando | ok | erro
+    mensagem = models.TextField(blank=True)
+    usuario = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        db_table = "sincronizacoes_omie"
+        ordering = ["-inicio"]
+        verbose_name = "sincronização Omie"
+        verbose_name_plural = "sincronizações Omie"

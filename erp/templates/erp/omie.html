@@ -1,0 +1,18 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+{% if not configurado %}<div class="msg error">As chaves da API do Omie ainda não estão no servidor (OMIE_APP_KEY e OMIE_APP_SECRET no arquivo .env).</div>{% endif %}
+<div class="card"><h2>Sincronizar agora</h2>
+<p>Busca no Omie os <b>lançamentos de contas a pagar e a receber</b> (Entradas e Saídas) e os <b>itens das notas fiscais de saída</b> (Faturamento)
+do período e substitui o que existe no ERP nesse intervalo. Recibos importados por planilha são mantidos.
+A sincronização automática roda todo dia às 6h com o mês anterior e o atual.</p>
+<form method="post" class="filtros">{% csrf_token %}
+<label>De<input type="date" name="de" value="{{ de|date:'Y-m-d' }}"></label>
+<label>Até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>
+<label>O quê<select name="so"><option value="">Tudo</option><option value="fluxo">Só Entradas e Saídas</option><option value="vendas">Só Faturamento</option></select></label>
+<button class="btn" {% if not configurado or rodando %}disabled{% endif %}>Sincronizar</button></form></div>
+<div class="card"><h2>Histórico</h2><div class="tabela"><table><tr><th>Início</th><th>Fim</th><th>Período</th><th>Por</th><th>Status</th><th>Resultado</th></tr>
+{% for s in ultimas %}<tr><td>{{ s.inicio|date:"d/m/Y H:i" }}</td><td>{{ s.fim|date:"H:i"|default:"…" }}</td><td>{{ s.de|date:"d/m/Y" }} a {{ s.ate|date:"d/m/Y" }}</td><td>{{ s.usuario }}</td>
+<td class="{% if s.status == 'erro' %}neg{% elif s.status == 'ok' %}ok{% endif %}">{{ s.status }}</td><td style="white-space:normal">{{ s.mensagem }}</td></tr>
+{% empty %}<tr><td colspan="6">Nenhuma sincronização ainda.</td></tr>{% endfor %}</table></div></div>
+{% if rodando %}<script>setTimeout(() => location.reload(), 15000)</script>{% endif %}
+{% endblock %}

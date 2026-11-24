@@ -8,4 +8,7 @@ git pull --ff-only
 .venv/bin/python manage.py migrate --noinput
 .venv/bin/python manage.py collectstatic --noinput -v0
 chown -R plastimanaus:www-data /opt/plastimanaus
+cp deploy/omie-sync.service deploy/omie-sync.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now omie-sync.timer >/dev/null 2>&1 || true
 systemctl restart plastimanaus 2>/dev/null || true

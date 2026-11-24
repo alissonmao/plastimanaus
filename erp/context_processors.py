@@ -9,6 +9,7 @@ PRODUCAO = [
     ("dashboard", "Chão de Fábrica - Produção", "🏭"),
     ("apontamentos", "Apontamentos", "📋"),
     ("relatorios", "Relatórios", "📊"),
+    ("omie", "Integração Omie", "🔄"),
 ]
 
 

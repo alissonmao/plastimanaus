@@ -113,3 +113,7 @@ if not DEBUG:
 # Importação inicial a partir do Supabase do projeto Lovable (opcional)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+# API do Omie (Configurações → Desenvolvedor → Aplicativos no Omie)
+OMIE_APP_KEY = os.getenv("OMIE_APP_KEY", "")
+OMIE_APP_SECRET = os.getenv("OMIE_APP_SECRET", "")

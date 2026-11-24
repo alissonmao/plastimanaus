@@ -401,3 +401,36 @@ def cadastro_form(request, nome, pk=None):
             messages.success(request, "Registro salvo.")
             return redirect(voltar)
     return render(request, "erp/form.html", dict(titulo=cfg["titulo"], form=form, obj=obj, voltar=voltar))
+
+
+# ===================================================================== Integração Omie
+def omie_view(request):
+    import subprocess
+    import sys
+
+    from django.conf import settings as cfg
+    from django.utils import timezone
+
+    from . import omie
+    from .models import SincronizacaoOmie
+
+    hoje = date.today()
+    de_pad = (hoje.replace(day=1) - timedelta(days=1)).replace(day=1)
+    if request.method == "POST":
+        de, ate = _data(request.POST.get("de"), de_pad), _data(request.POST.get("ate"), hoje)
+        so = request.POST.get("so", "")
+        if not omie.configurado():
+            messages.error(request, "Chaves do Omie não configuradas no servidor.")
+        elif SincronizacaoOmie.objects.filter(status="rodando", inicio__gte=timezone.now() - timedelta(hours=1)).exists():
+            messages.error(request, "Já existe uma sincronização em andamento.")
+        else:
+            reg = SincronizacaoOmie.objects.create(de=min(de, ate), ate=max(de, ate), usuario=request.user.username)
+            cmd = [sys.executable, str(cfg.BASE_DIR / "manage.py"), "sincronizar_omie", "--registro", str(reg.pk),
+                   "--de", reg.de.isoformat(), "--ate", reg.ate.isoformat()] + (["--so", so] if so else [])
+            subprocess.Popen(cmd, cwd=cfg.BASE_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            messages.success(request, "Sincronização iniciada. Atualize a página em alguns minutos.")
+        return redirect("omie")
+    ultimas = SincronizacaoOmie.objects.all()[:20]
+    return render(request, "erp/omie.html", dict(titulo="Integração Omie", configurado=omie.configurado(),
+                                                 de=de_pad, ate=hoje, ultimas=ultimas,
+                                                 rodando=any(u.status == "rodando" for u in ultimas)))

@@ -1,0 +1,9 @@
+[Unit]
+Description=Sincronização diária com o Omie (ERP Plasti Manaus)
+
+[Service]
+Type=oneshot
+User=plastimanaus
+WorkingDirectory=/opt/plastimanaus
+EnvironmentFile=/opt/plastimanaus/.env
+ExecStart=/opt/plastimanaus/.venv/bin/python manage.py sincronizar_omie

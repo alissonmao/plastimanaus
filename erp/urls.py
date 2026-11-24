@@ -18,5 +18,6 @@ urlpatterns = [
     path("cadastros/<slug:nome>/", views.cadastro_lista, name="cadastro"),
     path("cadastros/<slug:nome>/novo/", views.cadastro_form, name="cadastro_novo"),
     path("cadastros/<slug:nome>/<uuid:pk>/", views.cadastro_form, name="cadastro_editar"),
+    path("omie/", views.omie_view, name="omie"),
     path("saude/", lambda r: HttpResponse("ok"), name="saude"),
 ]
