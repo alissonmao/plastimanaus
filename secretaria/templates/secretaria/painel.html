@@ -1,0 +1,43 @@
+{% extends "erp/base.html" %}
+{% block titulo_pagina %}{% endblock %}
+{% block conteudo %}
+<div class="painel-top">
+  <div><h1>{{ saudacao }}</h1><div class="data">{{ data_extenso }}</div></div>
+  <div class="lado"><div class="acoes">
+    <button class="btn sec" disabled title="Chega na fase de voz">▶ Ouvir briefing</button>
+    <a class="btn sec" href="?atualizar=1">⟳ Atualizar</a></div>
+    {% if lido_em %}<small>E-mails lidos às {{ lido_em|time:"H:i" }}</small>{% endif %}</div>
+</div>
+{% for e in erros %}<div class="msg error">{{ e }}</div>{% endfor %}
+<div class="pk">
+  <div><a href="#resumo"><b class="vermelho">{{ tot.critico }}</b><span>Críticos</span></a></div>
+  <div><a href="#resumo"><b>{{ tot.financeiro }}</b><span>Financeiros</span></a></div>
+  <div><a href="#resumo"><b>{{ tot.responder }}</b><span>Aguardando resposta</span></a></div>
+  <div><a href="{% url 'sec_caixa' %}"><b>{{ nao_lidos }}</b><span>E-mails não lidos</span></a></div>
+  <div><b>–</b><span>Lembretes hoje</span><em style="color:var(--muted)">em breve</em></div>
+  <div><b>–</b><span>Compromissos hoje</span><em style="color:var(--muted)">em breve</em></div>
+</div>
+<div class="painel-grid">
+  <div id="resumo"><h2 class="secao">Resumo do dia</h2>
+  {% if sem_contas %}<div class="emp"><p class="embreve">Cadastre suas contas de e-mail para o resumo aparecer aqui.</p><a class="btn" href="{% url 'sec_contas' %}">Cadastrar contas</a></div>{% endif %}
+  {% for e in empresas %}<div class="emp">
+    <div class="emp-cab"><div class="av">{{ e.sigla }}</div><h3>{{ e.nome }}</h3></div>
+    {% for g in e.grupos %}<div class="cat">{{ g.icone }} {{ g.titulo }} <span class="n">{{ g.itens|length }}</span></div>
+      {% for i in g.itens|slice:":8" %}<a class="pi {% if i.lido %}lido{% endif %}" href="{% url 'sec_ler' i.conta i.uid %}?conta={{ i.conta }}">
+        <div class="t">{{ i.assunto }}</div><div class="s">{{ i.de }} &lt;{{ i.de_email }}&gt; — <b>{{ i.empresa }}</b> — {{ i.data|date:"d/m/Y, H:i" }}</div></a>{% endfor %}
+      {% if g.itens|length > 8 %}<a class="helptext" href="{% url 'sec_caixa' %}?conta={{ g.itens.0.conta }}">+ {{ g.itens|length|add:"-8" }} na caixa de entrada</a>{% endif %}
+    {% empty %}<p class="embreve">Nada novo nos últimos 2 dias.</p>{% endfor %}
+    {% if e.propaganda %}<details class="propaganda"><summary>🛒 {{ e.propaganda|length }} propaganda{{ e.propaganda|pluralize }} / avisos automáticos</summary>
+      {% for i in e.propaganda %}<a class="pi lido" href="{% url 'sec_ler' i.conta i.uid %}?conta={{ i.conta }}"><div class="t">{{ i.assunto }}</div><div class="s">{{ i.de }} — {{ i.data|date:"d/m H:i" }}</div></a>{% endfor %}</details>{% endif %}
+  </div>{% endfor %}
+  <p class="helptext">Prioridades separadas por palavras-chave no assunto. Na fase de triagem a IA passa a fazer essa separação.</p>
+  </div>
+  <div>
+    <div class="lado-card"><div class="cab"><h2>Lembretes</h2></div><p class="embreve">Os lembretes chegam na fase 6: criar pelo site ou pelo WhatsApp, com aviso na hora.</p></div>
+    <div class="lado-card"><div class="cab"><h2>Agenda de hoje</h2></div><p class="embreve">A agenda do iPhone (iCloud) chega na fase 5, com aviso 1 hora antes de cada compromisso.</p></div>
+    <div class="lado-card"><div class="cab"><h2>E-mail</h2><a href="{% url 'sec_caixa' %}">Abrir caixa</a></div>
+      <p class="embreve">{{ nao_lidos }} não lido{{ nao_lidos|pluralize }} em {{ empresas|length }} conta{{ empresas|length|pluralize }}.</p>
+      <a class="btn" href="{% url 'sec_escrever' %}">✉️ Escrever</a></div>
+  </div>
+</div>
+{% endblock %}

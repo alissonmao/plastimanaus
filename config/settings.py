@@ -105,7 +105,7 @@ if "test" in sys.argv[1:2]:  # testes renderizam telas sem rodar collectstatic
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "dashboard"
+LOGIN_REDIRECT_URL = "inicio"
 LOGOUT_REDIRECT_URL = "login"
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 20000
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024

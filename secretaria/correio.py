@@ -312,7 +312,19 @@ class Caixa:
 
     def listar(self, pasta="INBOX", busca=None, pagina=0, limite=LIMITE_PAGINA):
         uids = self.buscar_uids(pasta, busca)
-        fatia = uids[pagina * limite:(pagina + 1) * limite]
+        return self._resumos(pasta, uids[pagina * limite:(pagina + 1) * limite]), len(uids)
+
+    def recentes(self, dias=2, pasta="INBOX", limite=80):
+        """E-mails recebidos nos últimos `dias` (para o Painel)."""
+        from datetime import date, timedelta
+        meses = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        d = date.today() - timedelta(days=dias)
+        self._selecionar(pasta)
+        dados = self._ok(self.m.uid("SEARCH", None, "SINCE", f"{d.day}-{meses[d.month - 1]}-{d.year}"), "buscar recentes")
+        uids = sorted((int(x) for x in (dados[0] or b"").split()), reverse=True)
+        return self._resumos(pasta, uids[:limite])
+
+    def _resumos(self, pasta, fatia):
         itens = []
         if fatia:
             conjunto = ",".join(str(u) for u in fatia)
@@ -337,7 +349,7 @@ class Caixa:
                     lido="\\Seen" in flags, respondido="\\Answered" in flags, tamanho=int(tam.group(1)) if tam else 0,
                     anexo=b'"attachment"' in meta.lower() or b'("name"' in meta.lower()))
         itens.sort(key=lambda r: r.data or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-        return itens, len(uids)
+        return itens
 
     def nao_lidos(self, pasta="INBOX"):
         dados = self._ok(self.m.status(_q(pasta), "(UNSEEN)"), "contar")

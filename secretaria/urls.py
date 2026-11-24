@@ -1,8 +1,10 @@
 from django.urls import path
 
-from . import views
+from . import painel, views
 
 urlpatterns = [
+    path("", painel.painel, name="sec_painel"),
+    path("inicio/", painel.inicio, name="inicio"),
     path("email/", views.caixa, name="sec_caixa"),
     path("email/escrever/", views.escrever, name="sec_escrever"),
     path("email/sugerir/", views.sugerir, name="sec_sugerir"),

@@ -249,6 +249,29 @@ class EmailTest(TestCase):
         self.assertIn("confirmar entrega", kw["messages"][0]["content"])
 
 
+@mock.patch("imaplib.IMAP4_SSL", FakeIMAP)
+@mock.patch("smtplib.SMTP_SSL", FakeSMTP)
+class PainelTest(EmailTest):
+    def test_painel(self):
+        self._conta()
+        r = self.c.get("/secretaria/")
+        self.assertContains(r, "Resumo do dia")
+        self.assertContains(r, "💰 Financeiro")
+        self.assertContains(r, "Pedido de orçamento")
+        self.assertEqual(r.context["tot"]["financeiro"], 2)   # "orçamento" conta como financeiro
+        self.assertContains(self.c.get("/"), 'class="direto')
+        self.assertRedirects(self.c.get("/secretaria/inicio/"), "/secretaria/", fetch_redirect_response=False)
+
+    def test_classificar(self):
+        from .painel import classificar
+        R = lambda a, de="joao@cliente.com.br", resp=False: SimpleNamespace(assunto=a, de_nome="X", de_email=de, respondido=resp)
+        self.assertEqual(classificar(R("Re: Sentença - Processo n. 0000060")), "critico")
+        self.assertEqual(classificar(R("NFS-e 180/BOLETO")), "financeiro")
+        self.assertEqual(classificar(R("Black Friday 50% off", "news@loja.com")), "propaganda")
+        self.assertEqual(classificar(R("Oi, tudo bem?")), "responder")
+        self.assertEqual(classificar(R("Oi, tudo bem?", resp=True)), "outros")
+
+
 class UsuariosTest(TestCase):
     def test_marca_secretaria(self):
         adm = User.objects.create_user("adm", password="x", is_staff=True)

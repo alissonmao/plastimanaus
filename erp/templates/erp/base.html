@@ -7,13 +7,14 @@
 </head><body><div class="app">
 <nav class="side">
   <div class="logo"><img src="{% static 'img/logo.png' %}" alt="Plasti Manaus"></div>
-  {% for sec in menu %}<details class="sec" {% if sec.aberta %}open{% endif %}><summary>{{ sec.icone }} {{ sec.titulo }}</summary>
+  {% for sec in menu %}{% if sec.direto %}<a class="direto {% if sec.aberta %}on{% endif %}" href="{{ sec.itens.0.url }}">{{ sec.icone }} {{ sec.titulo }}</a>
+  {% else %}<details class="sec" {% if sec.aberta %}open{% endif %}><summary>{{ sec.icone }} {{ sec.titulo }}</summary>
     {% for it in sec.itens %}<a href="{{ it.url }}" class="{% if it.ativo %}on{% endif %}">{{ it.label }}</a>{% endfor %}
-  </details>{% endfor %}
+  </details>{% endif %}{% endfor %}
   <form method="post" action="{% url 'logout' %}">{% csrf_token %}<div class="user">{{ user.get_full_name|default:user.username }} · <button class="btn sec" style="padding:2px 8px">Sair</button></div></form>
 </nav>
 <main>
-  <h1>{{ titulo }}</h1>
+  {% block titulo_pagina %}<h1>{{ titulo }}</h1>{% endblock %}
   {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
   {% block conteudo %}{% endblock %}
 </main></div>

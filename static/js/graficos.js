@@ -1,5 +1,5 @@
 // Helpers de gráficos (Chart.js) usados pelas telas do ERP.
-const PALETA = ["#0f7a3d","#2f80ed","#f2994a","#9b51e0","#eb5757","#27ae60","#56ccf2","#f2c94c","#d86dcd","#828282","#219653","#bb6bd9"];
+const PALETA = ["#9a7a1c","#3f8f4a","#2f80ed","#f2994a","#9b51e0","#eb5757","#27ae60","#56ccf2","#f2c94c","#d86dcd","#828282","#219653","#bb6bd9"];
 const brl = v => v == null ? "" : v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const n2 = v => v == null ? "" : v.toLocaleString("pt-BR",{maximumFractionDigits:2});
 const curto = v => { const a=Math.abs(v); return a>=1e6?(v/1e6).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mi":a>=1e3?(v/1e3).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mil":n2(v); };
