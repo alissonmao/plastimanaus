@@ -126,19 +126,22 @@ def mapa_produtos():
 
 
 # --------------------------------------------------------------------- fluxo de caixa
-def situacao(status: str, natureza: str, conciliado: bool) -> str | None:
+FORMAS = {"BOL": "Boleto", "PIX": "PIX", "TRA": "Transferência", "DIN": "Dinheiro", "CRT": "Cartão de Crédito",
+          "CRD": "Cartão de Crédito", "CHQ": "Cheque", "TAR": "Tarifa", "DEB": "Débito em conta"}
+
+
+def situacao(status: str, natureza: str, boleto: bool) -> str | None:
+    """Mesmos nomes da exportação de contas do Omie usada nas planilhas."""
     receber = natureza == "R"
-    s = (status or "").upper()
+    s = (status or "").upper().replace("_", "").replace(" ", "")
     if s == "CANCELADO":
         return None
-    if s in ("RECEBIDO", "LIQUIDADO"):
-        if conciliado:
-            return "Conciliado"
+    if s in ("RECEBIDO", "LIQUIDADO", "PAGO"):
         return "Recebido" if receber else "Pago"
-    return {
-        "PAGTO_PARCIAL": "Recebido Parcialmente" if receber else "Pago Parcialmente",
-        "ATRASADO": "Atrasado", "VENCEHOJE": "Vence hoje", "AVENCER": "A vencer", "EMABERTO": "A vencer",
-    }.get(s, s.title())
+    if s == "PAGTOPARCIAL":
+        return "Recebido Parcialmente" if receber else "Pago Parcialmente"
+    base = {"ATRASADO": "Atrasado", "VENCEHOJE": "Vence hoje", "AVENCER": "A vencer", "EMABERTO": "A vencer"}.get(s, (status or "").title())
+    return f"{base} (boleto gerado)" if boleto else base
 
 
 def buscar_fluxo(de: date, ate: date) -> list[dict]:
@@ -151,7 +154,7 @@ def buscar_fluxo(de: date, ate: date) -> list[dict]:
         nat = d.get("cNatureza")
         if nat not in ("P", "R"):
             continue
-        sit = situacao(d.get("cStatus"), nat, bool(d.get("dDtConcilia")))
+        sit = situacao(d.get("cStatus"), nat, bool(d.get("cNumBoleto")))
         if sit is None:
             continue
         sinal = Decimal(1) if nat == "R" else Decimal(-1)
@@ -163,12 +166,12 @@ def buscar_fluxo(de: date, ate: date) -> list[dict]:
         dep = max(mov.get("departamentos") or [{}], key=lambda x: x.get("nDistrValor") or 0).get("cCodDepartamento")
         pago = dec(r.get("nValPago"))
         rows.append(dict(
-            fornecedor=cli.get("nome_fantasia") or cli.get("razao_social") or "—",
+            fornecedor=cli.get("razao_social") or cli.get("nome_fantasia") or "—",
             categoria=categoria, grupo=grupo,
             data_emissao=data_omie(d.get("dDtEmissao")) or data_omie(d.get("dDtRegistro")) or de,
             data_pagamento=data_omie(d.get("dDtPagamento")) if pago else None,
-            departamento=deps.get(dep) or None, cnpj_cpf=d.get("cCPFCNPJCliente") or cli.get("cnpj_cpf") or None,
-            forma_pagamento=d.get("cTipo") or None, situacao=sit, tipo=TIPO_RECEBER if nat == "R" else TIPO_PAGAR,
+            departamento=deps.get(dep) or "N/D", cnpj_cpf=d.get("cCPFCNPJCliente") or cli.get("cnpj_cpf") or None,
+            forma_pagamento=FORMAS.get(d.get("cTipo") or "", "N/D"), situacao=sit, tipo=TIPO_RECEBER if nat == "R" else TIPO_PAGAR,
             valor_conta=sinal * dec(d.get("nValorTitulo")), valor_pago=sinal * pago,
             conta_corrente=contas.get(d.get("nCodCC")) or None,
         ))
