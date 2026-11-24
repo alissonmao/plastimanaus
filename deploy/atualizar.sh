@@ -11,5 +11,7 @@ git pull --ff-only
 chown -R plastimanaus:www-data /opt/plastimanaus
 cp deploy/omie-sync.service deploy/omie-sync.timer /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now omie-sync.timer >/dev/null 2>&1 || true
+# Sincronização diária só quando OMIE_SYNC_AUTO=1 no .env
+if grep -q '^OMIE_SYNC_AUTO=1' .env; then systemctl enable --now omie-sync.timer >/dev/null 2>&1 || true
+else systemctl disable --now omie-sync.timer >/dev/null 2>&1 || true; fi
 systemctl restart plastimanaus 2>/dev/null || true
