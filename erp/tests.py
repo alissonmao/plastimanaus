@@ -17,7 +17,7 @@ RESPOSTAS = {
         {"codigo_cliente_omie": 10, "razao_social": "ATACADAO LTDA", "nome_fantasia": "Atacadão", "cnpj_cpf": "00.000/0001-00",
          "cidade": "MANAUS (AM)", "estado": "AM", "bairro": "Centro"},
         {"codigo_cliente_omie": 20, "razao_social": "FUNCIONARIO X", "nome_fantasia": ""}]},
-    "ListarResumoContasCorrentes": {"total_de_paginas": 1, "conta_corrente_lista": [{"nCodCC": 5, "descricao": "Itaú"}]},
+    "ListarResumoContasCorrentes": {"total_de_paginas": 1, "conta_corrente_lista": [{"nCodCC": 5, "descricao": "Itaú"}, {"nCodCC": 6, "descricao": "Santander"}]},
     "ListarDepartamentos": {"total_de_paginas": 1, "departamentos": [{"codigo": "D1", "descricao": "Produção"}]},
     "ListarVendedores": {"total_de_paginas": 1, "cadastro": [{"codigo": 7, "nome": "JOÃO"}]},
     "ListarProdutos": {"total_de_paginas": 1, "produto_servico_cadastro": [
@@ -29,6 +29,7 @@ RESPOSTAS = {
         {"detalhes": {"cNatureza": "P", "cStatus": "ATRASADO", "nCodCliente": 20, "cCodCateg": "2.01.01", "dDtEmissao": "06/11/2026",
                       "nValorTitulo": 300}, "resumo": {"nValPago": 0},
          "categorias": [{"cCodCateg": "2.01.01", "nDistrValor": 300}], "departamentos": [{"cCodDepartamento": "D1", "nDistrValor": 300}]},
+        {"detalhes": {"cNatureza": "P", "cStatus": "PAGO", "nCodCC": 6, "dDtEmissao": "06/11/2026", "nValorTitulo": 900}, "resumo": {"nValPago": 900}},
         {"detalhes": {"cNatureza": "P", "cStatus": "CANCELADO", "dDtEmissao": "06/11/2026", "nValorTitulo": 50}, "resumo": {}}]},
     "ListarNF": {"total_de_paginas": 1, "nfCadastro": [
         {"ide": {"dEmi": "07/11/2026", "nNF": 123, "finNFe": "1"}, "nfDestInt": {"nCodCli": 10, "cRazao": "ATACADAO LTDA"},
@@ -61,7 +62,7 @@ class OmieTest(TestCase):
         pag = FluxoCaixa.objects.get(tipo=omie.TIPO_PAGAR)
         self.assertEqual((pag.fornecedor, pag.grupo, pag.situacao, pag.valor_conta, pag.departamento, pag.data_pagamento),
                          ("FUNCIONARIO X", "Despesas com Pessoal", "Atrasado", -300, "Produção", None))
-        self.assertEqual(FluxoCaixa.objects.count(), 2)  # cancelado ignorado
+        self.assertEqual(FluxoCaixa.objects.count(), 2)  # cancelado e Santander ignorados
         nov = Venda.objects.filter(data__month=11)
         self.assertEqual(sorted(nov.values_list("cliente", flat=True)), ["ATACADAO LTDA", "R"])  # recibo mantido, NF velha substituída
         v = nov.get(cliente="ATACADAO LTDA")

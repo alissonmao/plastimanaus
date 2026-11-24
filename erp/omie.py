@@ -19,7 +19,7 @@ import requests
 from django.conf import settings
 from django.db import transaction
 
-from .calculos import codigo_produto
+from .calculos import codigo_produto, sem_acento
 from .models import FluxoCaixa, Venda
 
 log = logging.getLogger(__name__)
@@ -146,11 +146,14 @@ def situacao(status: str, natureza: str, boleto: bool) -> str | None:
 
 def buscar_fluxo(de: date, ate: date) -> list[dict]:
     cats, clis, contas, deps = mapa_categorias(), mapa_clientes(), mapa_contas(), mapa_departamentos()
+    excluir = {sem_acento(c) for c in settings.OMIE_EXCLUIR_CONTAS}
     rows = []
     for mov in paginar("financas/mf/", "ListarMovimentos", "movimentos",
                        {"dDtEmisDe": br(de), "dDtEmisAte": br(ate), "cExibirDepartamentos": "S", "cTpLancamento": "CPCR"},
                        por_pagina=50, chave_pag="nPagina", chave_qtd="nRegPorPagina", chave_total="nTotPaginas"):
         d, r = mov.get("detalhes", {}), mov.get("resumo", {})
+        if sem_acento(contas.get(d.get("nCodCC")) or "") in excluir:
+            continue
         nat = d.get("cNatureza")
         if nat not in ("P", "R"):
             continue
