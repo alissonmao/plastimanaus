@@ -2,6 +2,7 @@
 # Atualiza o código a partir do GitHub e reinicia. Rodar como root em /opt/plastimanaus.
 set -euo pipefail
 cd /opt/plastimanaus
+git config --global --get-all safe.directory | grep -qx /opt/plastimanaus || git config --global --add safe.directory /opt/plastimanaus
 git pull --ff-only
 [ -d .venv ] || python3 -m venv .venv
 .venv/bin/pip install -q -r requirements.txt
