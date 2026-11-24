@@ -23,10 +23,13 @@ class Command(BaseCommand):
         parser.add_argument("--so", choices=["fluxo", "vendas"])
         parser.add_argument("--usuario", default="agendado")
         parser.add_argument("--registro", type=int, help="id de SincronizacaoOmie já criado pela tela")
+        parser.add_argument("--ano-corrente", action="store_true", help="de 1º de janeiro (do ano de 60 dias atrás) até hoje — usado pela auditoria")
 
-    def handle(self, *a, de=None, ate=None, so=None, usuario="agendado", registro=None, **kw):
+    def handle(self, *a, de=None, ate=None, so=None, usuario="agendado", registro=None, ano_corrente=False, **kw):
         hoje = date.today()
         ate = ate or hoje
+        if ano_corrente:
+            de = date((hoje - timedelta(days=60)).year, 1, 1)
         de = de or (hoje.replace(day=1) - timedelta(days=1)).replace(day=1)
         if registro:
             reg = SincronizacaoOmie.objects.get(pk=registro)
@@ -35,7 +38,7 @@ class Command(BaseCommand):
                 raise CommandError("Já existe uma sincronização em andamento")
             reg = SincronizacaoOmie.objects.create(de=de, ate=ate, usuario=usuario)
         try:
-            msg = omie.sincronizar(de, ate, fluxo=so != "vendas", vendas=so != "fluxo", saida=self.stdout.write)
+            msg = omie.sincronizar(de, ate, fluxo=so != "vendas", vendas=so != "fluxo", saida=self.stdout.write, registro=reg)
             reg.status, reg.mensagem = "ok", msg
         except Exception as e:  # registra o erro para aparecer na tela
             reg.status, reg.mensagem = "erro", str(e)[:2000]

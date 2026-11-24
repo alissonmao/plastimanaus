@@ -43,3 +43,20 @@ class ApontamentoAdmin(admin.ModelAdmin):
 
 for modelo in [m.Setor, m.Familia, m.Maquina, m.Turno, m.Produto, m.Cor, m.TipoSacola, m.Medida, m.Cliente, m.OrdemProducao]:
     admin.site.register(modelo)
+
+
+@admin.register(m.AuditoriaOmie)
+class AuditoriaOmieAdmin(admin.ModelAdmin):
+    """Só leitura: a auditoria não pode ser alterada nem apagada."""
+    list_display = ("detectado_em", "tipo", "parte", "documento", "valor", "campo", "antes", "depois", "sensivel", "usuario_omie")
+    list_filter = ("tipo", "sensivel", "natureza", "campo")
+    search_fields = ("parte", "documento", "chave")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

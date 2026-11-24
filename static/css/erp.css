@@ -166,3 +166,4 @@ b.ok{color:var(--ok)}.chk{display:flex!important;flex-direction:row!important;ga
 .status-lista li.ok:before{color:var(--ok)}.status-lista li.pend:before{color:#d0a83a}
 .pk em.vermelho{color:var(--danger);font-style:normal;font-size:12px}
 [hidden]{display:none!important}
+.aud-sens td{background:#fff6f3}

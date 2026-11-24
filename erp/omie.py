@@ -274,15 +274,22 @@ def substituir(modelo, campo_data, de, ate, rows, manter=None):
     return apagados
 
 
-def sincronizar(de: date, ate: date, fluxo=True, vendas=True, saida=print) -> str:
+def sincronizar(de: date, ate: date, fluxo=True, vendas=True, saida=print, registro=None) -> str:
     if not configurado():
         raise OmieErro("Defina OMIE_APP_KEY e OMIE_APP_SECRET no .env do servidor")
     limpar_cache()
     partes = []
     if fluxo:
+        from . import auditoria
         rows = buscar_fluxo(de, ate)
-        ap = substituir(FluxoCaixa, "data_emissao", de, ate, rows)
-        partes.append(f"Fluxo de caixa: {len(rows)} lançamentos ({ap} substituídos)")
+        antes = auditoria.foto(de, ate)
+        if not rows and len(antes) > 20:  # proteção: resposta vazia do Omie não apaga o ERP nem gera "exclusões" falsas
+            raise OmieErro(f"O Omie não devolveu lançamentos para {br(de)} a {br(ate)}, mas o ERP tem {len(antes)}. Nada foi alterado.")
+        mudancas = auditoria.comparar(antes, rows, registro)
+        with transaction.atomic():
+            ap = substituir(FluxoCaixa, "data_emissao", de, ate, rows)
+        n = auditoria.gravar(mudancas) if antes else 0  # primeira leitura do período: só guarda a "foto"
+        partes.append(f"Fluxo de caixa: {len(rows)} lançamentos ({ap} substituídos); auditoria: {n} mudança{'s' if n != 1 else ''}")
         saida(partes[-1])
     if vendas:
         rows = buscar_vendas(de, ate)

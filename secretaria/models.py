@@ -250,7 +250,7 @@ class EstadoTriagem(models.Model):
 # ===================================================================== Avisos (fila para o WhatsApp do Angel)
 class Notificacao(models.Model):
     TIPOS = [("lembrete", "Lembrete"), ("agenda", "Agenda"), ("triagem", "Triagem de e-mail"), ("briefing", "Briefing"),
-             ("analise", "Análise semanal"), ("teste", "Teste")]
+             ("analise", "Análise semanal"), ("auditoria", "Auditoria Omie"), ("teste", "Teste")]
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notificacoes")
     tipo = models.CharField(max_length=10, choices=TIPOS)
     chave = models.CharField(max_length=200, help_text="Evita avisar duas vezes a mesma coisa.")

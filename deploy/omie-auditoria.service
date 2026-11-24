@@ -1,0 +1,11 @@
+[Unit]
+Description=Lê Entradas e Saídas do Omie e registra as mudanças (auditoria)
+
+[Service]
+Type=oneshot
+User=plastimanaus
+WorkingDirectory=/opt/plastimanaus
+EnvironmentFile=/opt/plastimanaus/.env
+Environment=HOME=/home/plastimanaus
+ExecStart=/opt/plastimanaus/.venv/bin/python manage.py sincronizar_omie --so fluxo --ano-corrente --usuario auditoria
+TimeoutStartSec=1500

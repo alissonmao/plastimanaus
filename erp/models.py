@@ -308,3 +308,39 @@ class SincronizacaoOmie(models.Model):
         ordering = ["-inicio"]
         verbose_name = "sincronização Omie"
         verbose_name_plural = "sincronizações Omie"
+
+
+class AuditoriaOmie(models.Model):
+    """O que mudou no Omie entre uma leitura e outra (só cresce; não é apagado pelas telas)."""
+    TIPOS = [("novo", "Novo"), ("alterado", "Alterado"), ("excluido", "Excluído/cancelado")]
+    detectado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+    sincronizacao = models.ForeignKey(SincronizacaoOmie, on_delete=models.SET_NULL, null=True, blank=True, related_name="auditoria")
+    entidade = models.CharField(max_length=20, default="titulo")  # titulo | nf
+    chave = models.CharField("código Omie", max_length=60, db_index=True)
+    tipo = models.CharField(max_length=10, choices=TIPOS, db_index=True)
+    natureza = models.CharField(max_length=10, blank=True)  # pagar | receber
+    documento = models.CharField(max_length=120, blank=True)
+    parte = models.CharField("fornecedor/cliente", max_length=300, blank=True, db_index=True)
+    valor = models.DecimalField(max_digits=16, decimal_places=2, null=True, blank=True)
+    campo = models.CharField(max_length=40, blank=True, db_index=True)
+    antes = models.TextField(blank=True)
+    depois = models.TextField(blank=True)
+    sensivel = models.BooleanField(default=False, db_index=True)
+    motivo = models.CharField(max_length=200, blank=True)
+    usuario_omie = models.CharField(max_length=40, blank=True, db_index=True)
+    alterado_no_omie = models.CharField(max_length=30, blank=True)
+
+    class Meta:
+        db_table = "auditoria_omie"
+        ordering = ["-detectado_em", "id"]
+        verbose_name = "auditoria Omie"
+        verbose_name_plural = "auditoria Omie"
+
+
+class UsuarioOmie(models.Model):
+    """Nome de cada usuário do Omie (o Omie só informa o código, ex.: P001333838)."""
+    codigo = models.CharField(max_length=40, unique=True)
+    nome = models.CharField(max_length=150)
+
+    class Meta:
+        db_table = "usuarios_omie"

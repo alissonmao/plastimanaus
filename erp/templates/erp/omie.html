@@ -4,7 +4,7 @@
 <div class="card"><h2>Sincronizar agora</h2>
 <p>Busca no Omie os <b>lançamentos de contas a pagar e a receber</b> (Entradas e Saídas) e os <b>itens das notas fiscais de saída</b> (Faturamento)
 do período e substitui o que existe no ERP nesse intervalo. Recibos importados por planilha são mantidos.
-A sincronização automática roda todo dia às 6h com o mês anterior e o atual.</p>
+As Entradas e Saídas do ano são lidas automaticamente de hora em hora (7h às 19h), e cada mudança no Omie fica registrada em Sistema → Auditoria Omie.</p>
 <form method="post" class="filtros">{% csrf_token %}
 <label>De<input type="date" name="de" value="{{ de|date:'Y-m-d' }}"></label>
 <label>Até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>

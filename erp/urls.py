@@ -5,7 +5,10 @@ from . import faturamento as fat
 from . import financeiro as fin
 from . import usuarios, views
 
+from . import auditoria
+
 urlpatterns = [
+    path("sistema/auditoria-omie/", auditoria.tela, name="auditoria_omie"),
     path("", views.dashboard, name="dashboard"),
     path("apontamentos/", views.apontamentos, name="apontamentos"),
     path("apontamentos/novo/", views.apontamento_form, name="apontamento_novo"),

@@ -66,9 +66,11 @@ def menu(request):
             l["ativo"] = len(l["url"]) == max(len(x["url"]) for x in ativos)
         secoes.append(dict(titulo=titulo, icone=icone, itens=links, aberta=any(l["ativo"] for l in links), direto=titulo == "Painel"))
     if request.user.is_staff:
+        url = reverse("auditoria_omie")
+        secoes[-1]["itens"].append(dict(url=url, label="Auditoria Omie", ativo=path.startswith(url)))
         url = reverse("sec_integracoes")
         secoes[-1]["itens"].append(dict(url=url, label="Integrações (chaves)", ativo=path.startswith(url)))
-        if secoes[-1]["itens"][-1]["ativo"]:
+        if any(i["ativo"] for i in secoes[-1]["itens"]):
             secoes[-1]["aberta"] = True
         secoes[-1]["itens"].append(dict(url="/admin/", label="Administração", ativo=False))
     return {"menu": secoes, "tem_secretaria": secretaria}

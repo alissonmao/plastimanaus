@@ -1,0 +1,32 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<p class="helptext" style="max-width:820px">O ERP lê o Omie de hora em hora (7h às 19h) e registra aqui tudo o que mudou lá desde a leitura anterior:
+títulos novos, alterados (campo por campo) e excluídos. Os registros não podem ser apagados.
+{% if ultima %}Última leitura: <b>{{ ultima.fim|default:ultima.inicio|date:"d/m/Y H:i" }}</b>.{% endif %}</p>
+<form class="filtros card" method="get">
+  <label>Detectado de<input type="date" name="de" value="{{ de }}"></label><label>até<input type="date" name="ate" value="{{ ate }}"></label>
+  <select name="tipo"><option value="">Novos, alterados e excluídos</option>{% for k, v in tipos %}<option value="{{ k }}" {% if f.tipo == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+  <select name="campo"><option value="">Qualquer campo</option>{% for k, v in campos %}<option value="{{ k }}" {% if f.campo == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+  <select name="natureza"><option value="">Pagar e receber</option><option value="pagar" {% if f.natureza == 'pagar' %}selected{% endif %}>A pagar</option><option value="receber" {% if f.natureza == 'receber' %}selected{% endif %}>A receber</option></select>
+  {% if usuarios %}<select name="usuario_omie"><option value="">Qualquer usuário</option>{% for c, n in usuarios %}<option value="{{ c }}" {% if f.usuario_omie == c %}selected{% endif %}>{{ n|default:c }}</option>{% endfor %}</select>{% endif %}
+  <input name="q" value="{{ f.q }}" placeholder="Fornecedor, cliente ou documento"><input name="valor_min" value="{{ f.valor_min }}" placeholder="Valor a partir de" size="10">
+  <label class="chk"><input type="checkbox" name="sensivel" value="1" {% if f.sensivel %}checked{% endif %}> Só sensíveis</label>
+  <button class="btn sec">Filtrar</button><a class="btn sec" href="?{{ qs_export }}&exportar=1">⬇ Excel</a>
+</form>
+<div class="pk" style="grid-template-columns:repeat(2,minmax(0,220px))"><div><b>{{ total }}</b><span>Mudanças no período</span></div><div><b class="vermelho">{{ sensiveis }}</b><span>Sensíveis</span></div></div>
+<div class="card"><div class="tabela" style="max-height:none"><table>
+<tr><th>Detectado</th><th>Tipo</th><th>Fornecedor/cliente</th><th>Documento</th><th class="num">Valor</th><th>Campo</th><th>Antes</th><th>Depois</th><th>Quem (Omie)</th></tr>
+{% for r in lista %}<tr class="{% if r.sensivel %}aud-sens{% endif %}" title="{{ r.motivo }}">
+<td>{{ r.detectado_em|date:"d/m H:i" }}</td>
+<td><span class="tag {% if r.tipo == 'excluido' %}erro{% elif r.tipo == 'novo' %}ok{% endif %}">{{ r.get_tipo_display }}</span>{% if r.sensivel %}<br><small class="neg">⚠ {{ r.motivo }}</small>{% endif %}</td>
+<td>{{ r.parte }}<br><small class="helptext">{% if r.natureza == 'receber' %}a receber{% else %}a pagar{% endif %} · cód. {{ r.chave }}</small></td>
+<td>{{ r.documento }}</td><td class="num">{{ r.valor|floatformat:2 }}</td><td>{{ r.campo_nome }}</td>
+<td>{{ r.antes }}</td><td><b>{{ r.depois }}</b></td>
+<td>{{ r.quem }}{% if r.alterado_no_omie %}<br><small class="helptext">{{ r.alterado_no_omie }}</small>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="9" class="helptext">Nenhuma mudança no período{% if not ultima %} — a primeira leitura só guarda a “foto” atual; as mudanças aparecem a partir da segunda{% endif %}.</td></tr>{% endfor %}
+</table></div>{% if total > 500 %}<p class="helptext">Mostrando 500 de {{ total }}. Use os filtros ou exporte para Excel.</p>{% endif %}</div>
+{% if usuarios %}<div class="card" style="margin-top:14px"><h2>Nomes dos usuários do Omie</h2>
+<p class="helptext">O Omie informa só o código de quem alterou. Dê um nome a cada código para facilitar a leitura.</p>
+{% for c, n in usuarios %}<form method="post" class="linha" style="margin-bottom:6px">{% csrf_token %}<input type="hidden" name="codigo" value="{{ c }}"><code style="min-width:120px">{{ c }}</code>
+<input name="nome" value="{{ n }}" placeholder="Nome da pessoa" style="max-width:260px"><button class="btn sec">Salvar</button></form>{% endfor %}</div>{% endif %}
+{% endblock %}
