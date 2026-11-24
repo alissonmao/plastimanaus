@@ -1,9 +1,9 @@
-{% extends "erp/base.html" %}
-{% block conteudo %}
+{% extends "secretaria/_layout.html" %}
+{% block mail %}<div class="mail-main"><h2>{{ acao_titulo }}</h2>
 {% if not https %}<div class="msg error">Sem HTTPS: o salvamento está bloqueado para a senha não trafegar aberta na rede.</div>{% endif %}
 {% if obj.ultimo_erro %}<div class="msg error">Último teste: {{ obj.ultimo_erro }}</div>{% endif %}
 <div class="card"><form method="post" class="form" autocomplete="off">{% csrf_token %}{{ form.as_p }}
 <p class="helptext">Ao salvar, o ERP testa a conexão (IMAP para ler e SMTP para enviar). HostGator: IMAP SSL porta 993, SMTP SSL porta 465.</p>
 <div class="acoes"><button class="btn" {% if not https %}disabled{% endif %}>Salvar e testar</button><a class="btn sec" href="{% url 'sec_contas' %}">Cancelar</a>
 {% if obj %}<button class="btn danger" name="excluir" value="1" onclick="return confirm('Remover esta conta do ERP? Os e-mails continuam no servidor.')">Remover</button>{% endif %}</div></form></div>
-{% endblock %}
+</div>{% endblock %}

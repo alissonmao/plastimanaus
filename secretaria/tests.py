@@ -184,7 +184,7 @@ class EmailTest(TestCase):
         r = self.c.get("/secretaria/email/")
         self.assertContains(r, "Pedido de orçamento ção")
         self.assertContains(r, "João Cliente")
-        self.assertContains(r, '<span class="badge warn">1</span>', html=False)
+        self.assertContains(r, '<b class="cont">1</b>', html=False)
         r = self.c.get(f"/secretaria/email/{conta.pk}/1/")
         html = r.content.decode()
         self.assertIn('sandbox="allow-popups', html)

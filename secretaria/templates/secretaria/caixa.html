@@ -1,31 +1,44 @@
-{% extends "erp/base.html" %}
-{% block conteudo %}
-<div class="tabs">
-  <a href="?conta=todas" class="{% if sel == 'todas' %}on{% endif %}">Todas</a>
-  {% for c in contas %}<a href="?conta={{ c.pk }}" class="{% if sel == c.pk|stringformat:'s' %}on{% endif %}">{{ c.empresa }}{% if c.nao_lidos %} <span class="badge warn">{{ c.nao_lidos }}</span>{% endif %}</a>{% endfor %}
-</div>
-<form class="card filtros" method="get"><input type="hidden" name="conta" value="{{ sel }}">
-  {% if pastas %}<label>Pasta<select name="pasta" onchange="this.form.submit()">{% for p in pastas %}<option value="{{ p.nome }}" {% if p.nome == pasta %}selected{% endif %}>{{ p.rotulo }}</option>{% endfor %}</select></label>{% endif %}
-  <label>Buscar (remetente, assunto ou texto)<input name="q" value="{{ q }}" size="34"></label>
-  <button class="btn">Buscar</button>{% if q %}<a class="btn sec" href="?conta={{ sel }}&pasta={{ pasta|urlencode }}">Limpar</a>{% endif %}
-  <span style="flex:1"></span>
-  <a class="btn" href="{% url 'sec_escrever' %}{% if sel != 'todas' %}?conta={{ sel }}{% endif %}">✉️ Novo e-mail</a>
-  <a class="btn sec" href="{% url 'sec_contas' %}">Contas</a>
-</form>
-{% for e in erros %}<div class="msg error">{{ e }}</div>{% endfor %}
-<div class="card"><h2>{{ pasta_rotulo }}{% if q %} · busca “{{ q }}”{% endif %} · {{ total }} e-mail{{ total|pluralize }}</h2>
-<div class="tabela" style="max-height:none"><table class="emails">
-<tr>{% if sel == 'todas' %}<th>Empresa</th>{% endif %}<th>De</th><th>Assunto</th><th></th><th>Data</th></tr>
-{% for m in itens %}<tr class="{% if not m.lido %}novo{% endif %}">
-  {% if sel == 'todas' %}<td><span class="badge">{{ m.conta.empresa }}</span></td>{% endif %}
-  <td title="{{ m.de_email }}"><a href="{% url 'sec_ler' m.conta.pk m.uid %}?pasta={{ m.pasta|urlencode }}">{{ m.de_nome|truncatechars:34 }}</a></td>
-  <td style="white-space:normal"><a href="{% url 'sec_ler' m.conta.pk m.uid %}?pasta={{ m.pasta|urlencode }}">{{ m.assunto|truncatechars:110 }}</a></td>
-  <td>{% if m.anexo %}📎{% endif %}{% if m.respondido %}↩︎{% endif %}</td>
-  <td>{{ m.data|date:"d/m/Y H:i" }}</td></tr>
-{% empty %}<tr><td colspan="5">Nenhum e-mail.</td></tr>{% endfor %}
-</table></div>
-<div class="acoes" style="margin:10px 0 0">
-  {% if pagina %}<a class="btn sec" href="?conta={{ sel }}&pasta={{ pasta|urlencode }}&q={{ q|urlencode }}&p={{ pagina|add:-1 }}">← Mais novos</a>{% endif %}
-  {% if tem_mais %}<a class="btn sec" href="?conta={{ sel }}&pasta={{ pasta|urlencode }}&q={{ q|urlencode }}&p={{ pagina|add:1 }}">Mais antigos →</a>{% endif %}
-</div></div>
+{% extends "secretaria/_layout.html" %}
+{% block classe %}{% if m %}lendo{% endif %}{% endblock %}
+{% block mail %}
+<section class="mail-lista card">
+  <form method="get" class="busca">{% if sel %}<input type="hidden" name="conta" value="{{ sel }}">{% endif %}{% if sel != 'todas' %}<input type="hidden" name="pasta" value="{{ pasta }}">{% endif %}
+    <input name="q" value="{{ q }}" placeholder="🔍 Buscar remetente, assunto ou texto">{% if q %}<a class="btn sec" href="?conta={{ sel }}&pasta={{ pasta|urlencode }}">✕</a>{% endif %}</form>
+  <div class="cab-lista"><b>{{ pasta_rotulo }}</b>{% if q %} · “{{ q }}”{% endif %}<span>{{ total }} e-mail{{ total|pluralize }}</span></div>
+  {% for e in erros %}<div class="msg error">{{ e }}</div>{% endfor %}
+  <div class="itens">
+  {% for i in itens %}<a class="it {% if not i.lido %}novo{% endif %} {% if ver_uid == i.uid and ver_conta_id == i.conta.pk|stringformat:'s' %}on{% endif %}" href="{% url 'sec_ler' i.conta.pk i.uid %}?{{ qs }}&ler_pasta={{ i.pasta|urlencode }}">
+    <div class="l1"><span class="de">{{ i.de_nome|truncatechars:38 }}</span><span class="dt">{{ i.data|date:"d/m H:i" }}</span></div>
+    <div class="l2">{% if sel == 'todas' %}<span class="badge">{{ i.conta.empresa }}</span> {% endif %}{{ i.assunto|truncatechars:90 }}{% if i.anexo %} 📎{% endif %}{% if i.respondido %} ↩︎{% endif %}</div>
+  </a>{% empty %}<p class="vazio">Nenhum e-mail aqui.</p>{% endfor %}
+  </div>
+  <div class="pag">{% if pagina %}<a class="btn sec" href="?{{ qs_sem_p }}&p={{ pagina|add:-1 }}">← Mais novos</a>{% endif %}
+  {% if tem_mais %}<a class="btn sec" href="?{{ qs_sem_p }}&p={{ pagina|add:1 }}">Mais antigos →</a>{% endif %}</div>
+</section>
+{% if m %}
+<section class="mail-ler card">
+  <div class="acoes">
+    <a class="btn sec" href="{% url 'sec_caixa' %}?{{ qs }}" title="Fechar">✕</a>
+    <a class="btn" href="{% url 'sec_escrever' %}?conta={{ conta.pk }}&uid={{ m.uid }}&pasta={{ m.pasta|urlencode }}">↩︎ Responder</a>
+    <a class="btn sec" href="{% url 'sec_escrever' %}?conta={{ conta.pk }}&uid={{ m.uid }}&pasta={{ m.pasta|urlencode }}&modo=todos">Responder a todos</a>
+    <a class="btn sec" href="{% url 'sec_escrever' %}?conta={{ conta.pk }}&uid={{ m.uid }}&pasta={{ m.pasta|urlencode }}&modo=encaminhar">Encaminhar</a>
+    <form method="post" action="{% url 'sec_acao' conta.pk m.uid %}" style="display:contents">{% csrf_token %}<input type="hidden" name="pasta" value="{{ m.pasta }}"><input type="hidden" name="qs" value="{{ qs }}">
+      <button class="btn sec" name="acao" value="arquivar" title="Arquivar">🗄️ Arquivar</button>
+      <button class="btn danger" name="acao" value="apagar" title="Mover para a Lixeira">🗑️ Apagar</button>
+      <button class="btn sec" name="acao" value="nao_lido">Não lido</button>
+      {% if m.pasta != 'INBOX' %}<button class="btn sec" name="acao" value="entrada">📥 Voltar à entrada</button>{% endif %}
+    </form>
+  </div>
+  <h2 class="assunto">{{ m.assunto }}</h2>
+  <table class="cab"><tr><th>De</th><td>{{ m.de }} &lt;{{ m.de_email }}&gt;</td></tr>
+  <tr><th>Para</th><td style="white-space:normal">{{ m.para }}</td></tr>
+  {% if m.cc %}<tr><th>Cc</th><td style="white-space:normal">{{ m.cc }}</td></tr>{% endif %}
+  <tr><th>Data</th><td>{{ m.data|date:"d/m/Y H:i" }} · {{ conta.empresa }}</td></tr></table>
+  {% if m.anexos %}<div class="anexos">{% for a in m.anexos %}<a class="btn sec" href="{% url 'sec_anexo' conta.pk m.uid a.n %}?pasta={{ m.pasta|urlencode }}">📎 {{ a.nome }} <small>({{ a.tamanho|filesizeformat }})</small></a>{% endfor %}</div>{% endif %}
+  {% if m.html %}
+    {% if m.tem_imagens_externas and not imagens %}<div class="msg">Imagens externas bloqueadas para sua privacidade. <a href="?{{ qs }}&ler_pasta={{ m.pasta|urlencode }}&imagens=1">Mostrar imagens</a></div>{% endif %}
+    <iframe class="email" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" srcdoc="{{ m.html }}"></iframe>
+  {% else %}<pre class="email">{{ m.texto }}</pre>{% endif %}
+</section>
+{% endif %}
 {% endblock %}

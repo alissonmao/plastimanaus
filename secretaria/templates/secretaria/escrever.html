@@ -1,12 +1,12 @@
-{% extends "erp/base.html" %}
-{% block conteudo %}
-<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(260px,1fr)">
-<div class="card"><form method="post" enctype="multipart/form-data" class="form escrever" id="fEmail">{% csrf_token %}
+{% extends "secretaria/_layout.html" %}
+{% block mail %}
+<div class="mail-main grid" style="grid-template-columns:minmax(0,2fr) minmax(240px,1fr);align-items:start">
+<div class="card"><h2>{{ acao_titulo }}</h2><form method="post" enctype="multipart/form-data" class="form escrever" id="fEmail">{% csrf_token %}
   {{ form.non_field_errors }}
   {% for f in form.hidden_fields %}{{ f }}{% endfor %}
   {% for f in form.visible_fields %}<p>{{ f.label_tag }}{{ f }}{{ f.errors }}</p>{% endfor %}
   <div class="acoes"><button class="btn" onclick="return confirm('Enviar este e-mail?')">Enviar</button>
-  <a class="btn sec" href="{% if original %}{% url 'sec_ler' conta_id uid %}?pasta={{ pasta|urlencode }}{% else %}{% url 'sec_caixa' %}{% endif %}">Cancelar</a></div>
+  <a class="btn sec" href="{% if original %}{% url 'sec_ler' conta_id uid %}?conta={{ conta_id }}&pasta={{ pasta_orig|urlencode }}&ler_pasta={{ pasta_orig|urlencode }}{% else %}{% url 'sec_caixa' %}{% endif %}">Cancelar</a></div>
 </form></div>
 <div>
 {% if original %}
@@ -32,7 +32,7 @@ document.getElementById("bSugerir").onclick = async () => {
   b.disabled = true; st.textContent = "Escrevendo rascunho…";
   const fd = new FormData();
   fd.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
-  fd.append("conta", "{{ conta_id }}"); fd.append("uid", "{{ uid }}"); fd.append("pasta", "{{ pasta|escapejs }}");
+  fd.append("conta", "{{ conta_id }}"); fd.append("uid", "{{ uid }}"); fd.append("pasta", "{{ pasta_orig|escapejs }}");
   fd.append("instrucao", document.getElementById("instrucao").value); fd.append("rascunho", atual);
   try {
     const r = await fetch("{% url 'sec_sugerir' %}", {method: "POST", body: fd}); const j = await r.json();

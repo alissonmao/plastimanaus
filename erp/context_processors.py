@@ -31,8 +31,6 @@ MENU = [
     ("Cadastros", "🗂️", [("cadastro", v["titulo"], [k]) for k, v in CADASTROS.items()]),
     ("Secretaria", "🗓️", [
         ("sec_caixa", "E-mail", None),
-        ("sec_escrever", "Novo e-mail", None),
-        ("sec_contas", "Contas de e-mail", None),
     ]),
     ("Sistema", "⚙️", [
         ("omie", "Integração Omie", None),

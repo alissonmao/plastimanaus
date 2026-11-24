@@ -1,5 +1,5 @@
-{% extends "erp/base.html" %}
-{% block conteudo %}
+{% extends "secretaria/_layout.html" %}
+{% block mail %}<div class="mail-main"><h2>Contas de e-mail</h2>
 {% if not https %}<div class="msg error">O ERP ainda está sem HTTPS. Para proteger as senhas, o cadastro de contas só fica liberado depois que o domínio erp.plastimanaus.com.br estiver com HTTPS.</div>{% endif %}
 <div class="acoes"><a class="btn" href="{% url 'sec_conta_nova' %}">+ Adicionar conta</a>{% if contas %}<a class="btn sec" href="{% url 'sec_caixa' %}">Ir para a caixa de entrada</a>{% endif %}</div>
 <div class="card tabela"><table><tr><th>Empresa</th><th>E-mail</th><th>Servidor</th><th>Situação</th><th></th></tr>
@@ -8,4 +8,4 @@
 <td><a href="{% url 'sec_conta_editar' c.pk %}">Editar</a></td></tr>
 {% empty %}<tr><td colspan="5">Nenhuma conta cadastrada. Adicione suas contas do HostGator.</td></tr>{% endfor %}</table></div>
 <p class="helptext">Cada usuário vê apenas as próprias contas. As senhas ficam criptografadas no banco e nunca aparecem de volta na tela.</p>
-{% endblock %}
+</div>{% endblock %}

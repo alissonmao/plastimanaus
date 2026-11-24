@@ -1,0 +1,18 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="mail {% block classe %}{% endblock %}">
+<aside class="mail-nav card">
+  <a class="btn escrever-btn" href="{% url 'sec_escrever' %}{% if sel != 'todas' %}?conta={{ sel }}{% endif %}">✉️ Escrever</a>
+  <a class="item {% if modo == 'caixa' and sel == 'todas' %}on{% endif %}" href="{% url 'sec_caixa' %}?conta=todas">📬 Todas as caixas{% if total_nao_lidos %}<b class="cont">{{ total_nao_lidos }}</b>{% endif %}</a>
+  <div class="rot">Contas</div>
+  {% for c in contas_nav %}
+    <a class="item conta {% if modo == 'caixa' and sel == c.pk|stringformat:'s' and pasta == 'INBOX' %}on{% endif %}" href="{% url 'sec_caixa' %}?conta={{ c.pk }}" title="{{ c.email }}">
+      <span>{{ c.empresa }}<small>{{ c.email }}</small></span>{% if c.nao_lidos == -1 %}<b class="cont erro" title="Não consegui conectar">!</b>{% elif c.nao_lidos %}<b class="cont">{{ c.nao_lidos }}</b>{% endif %}</a>
+    {% if sel == c.pk|stringformat:'s' and pastas %}<div class="pastas">{% for p in pastas %}{% if p.nome != 'INBOX' %}
+      <a class="item pasta {% if modo == 'caixa' and p.nome == pasta %}on{% endif %}" href="{% url 'sec_caixa' %}?conta={{ c.pk }}&pasta={{ p.nome|urlencode }}">{{ p.icone }} {{ p.rotulo }}</a>{% endif %}{% endfor %}</div>{% endif %}
+  {% empty %}<p class="helptext">Nenhuma conta ainda.</p>{% endfor %}
+  <a class="item {% if modo == 'contas' %}on{% endif %}" href="{% url 'sec_contas' %}" style="margin-top:10px">⚙️ Gerenciar contas</a>
+</aside>
+{% block mail %}{% endblock %}
+</div>
+{% endblock %}

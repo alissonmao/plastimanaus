@@ -1,10 +1,12 @@
 """Secretaria → E-mail: caixa de entrada, leitura, arquivar/apagar, responder e escrever."""
 from datetime import datetime, timezone
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone as djtz
 from django.views.decorators.http import require_POST
@@ -30,57 +32,91 @@ def _https_ok(request):
     return request.is_secure() or settings.SECRETARIA_PERMITIR_HTTP
 
 
-# ===================================================================== Caixa de entrada
+# ===================================================================== Tela única de e-mail
+def _nao_lidos(conta, cx=None):
+    """Não lidos da Caixa de entrada, com cache de 1 minuto para o painel não abrir todas as contas a cada clique."""
+    chave = f"sec-naolidos-{conta.pk}"
+    if cx is not None:
+        n = cx.nao_lidos("INBOX")
+        cache.set(chave, n, 60)
+        return n
+    n = cache.get(chave)
+    if n is None:
+        try:
+            with M.Caixa(conta) as c2:
+                n = c2.nao_lidos("INBOX")
+        except M.ErroCorreio:
+            n = -1
+        cache.set(chave, n, 60)
+    return n
+
+
+def _painel(request, contas, sel="todas", pasta="INBOX", pastas=None, modo="caixa"):
+    """Contexto da coluna da esquerda (contas, pastas, escrever), igual em todas as telas de e-mail."""
+    for c in contas:
+        if not hasattr(c, "nao_lidos"):
+            c.nao_lidos = _nao_lidos(c)
+    return dict(contas_nav=contas, sel=sel, pasta=pasta, pastas=pastas or [], modo=modo,
+                total_nao_lidos=sum(max(c.nao_lidos or 0, 0) for c in contas))
+
+
+def _qs(sel, pasta, q, pagina):
+    return urlencode({k: v for k, v in dict(conta=sel, pasta=pasta, q=q, p=pagina or "").items() if v})
+
+
 @secretaria_obrigatoria
-def caixa(request):
+def caixa(request, pk=None, uid=None):
+    """Lista (e, se houver uid, a leitura) na mesma tela."""
+    ver_conta = _conta(request, pk) if pk else None
     contas = list(_contas(request))
     if not contas:
         return redirect("sec_contas")
-    sel = request.GET.get("conta", "todas")
+    sel = request.GET.get("conta") or (str(pk) if pk else "todas")
     pasta = request.GET.get("pasta", "INBOX")
     busca = request.GET.get("q", "").strip()
     pagina = max(int(request.GET.get("p", 0) or 0), 0)
+    imagens = request.GET.get("imagens") == "1"
     alvo = contas if sel == "todas" else [c for c in contas if str(c.pk) == sel]
     if not alvo:
         raise Http404
-    if sel == "todas":
-        pasta = "INBOX"
-    itens, erros, total, pastas, contagem = [], [], 0, [], {}
+    lista_pasta = "INBOX" if sel == "todas" else pasta
+    ver_pasta = request.GET.get("ler_pasta") or lista_pasta
+    itens, erros, total, pastas, msg = [], [], 0, [], None
     por_conta = M.LIMITE_PAGINA if len(alvo) == 1 else max(15, M.LIMITE_PAGINA // len(alvo))
     for c in alvo:
         try:
             with M.Caixa(c) as cx:
-                lst, n = cx.listar(pasta, busca or None, pagina, por_conta)
+                if ver_conta and c.pk == ver_conta.pk:
+                    try:
+                        msg = M.interpretar(cx.bruto(ver_pasta, uid, marcar_lido=True), str(uid), ver_pasta, imagens)
+                    except M.ErroCorreio as e:
+                        messages.error(request, str(e))
+                lst, n = cx.listar(lista_pasta, busca or None, pagina, por_conta)
                 itens += lst
                 total += n
-                contagem[c.pk] = cx.nao_lidos("INBOX")
+                c.nao_lidos = _nao_lidos(c, cx)
                 if len(alvo) == 1:
-                    pastas = [dict(nome=p["nome"], rotulo=M.nome_pasta(p["nome"])) for p in cx.pastas()]
+                    pastas = cx.pastas_organizadas()
         except M.ErroCorreio as e:
             erros.append(f"{c.empresa}: {e}")
+    if ver_conta and msg is None and ver_conta not in alvo:
+        try:
+            with M.Caixa(ver_conta) as cx:
+                msg = M.interpretar(cx.bruto(ver_pasta, uid, marcar_lido=True), str(uid), ver_pasta, imagens)
+        except M.ErroCorreio as e:
+            messages.error(request, str(e))
     itens.sort(key=lambda r: r.data or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-    for c in contas:
-        c.nao_lidos = contagem.get(c.pk)
-    return render(request, "secretaria/caixa.html", dict(
-        titulo="E-mail", contas=contas, sel=sel, pasta=pasta, pasta_rotulo=M.nome_pasta(pasta), pastas=pastas,
-        q=busca, itens=itens, erros=erros, total=total, pagina=pagina,
-        tem_mais=(pagina + 1) * por_conta < total, por_conta=por_conta))
+    rotulo = next((p["rotulo"] for p in pastas if p["nome"] == lista_pasta), M.nome_pasta(lista_pasta))
+    ctx = _painel(request, contas, sel, lista_pasta, pastas)
+    ctx.update(titulo="E-mail", q=busca, itens=itens, erros=erros, total=total, pagina=pagina,
+               pasta_rotulo="Todas as caixas" if sel == "todas" else rotulo,
+               tem_mais=(pagina + 1) * por_conta < total, qs=_qs(sel, lista_pasta, busca, pagina),
+               qs_sem_p=_qs(sel, lista_pasta, busca, 0), m=msg, conta=ver_conta, imagens=imagens,
+               ver_uid=str(uid) if uid else "", ver_conta_id=str(pk) if pk else "")
+    return render(request, "secretaria/caixa.html", ctx)
 
 
-# ===================================================================== Ler
-@secretaria_obrigatoria
-def ler(request, pk, uid):
-    conta = _conta(request, pk)
-    pasta = request.GET.get("pasta", "INBOX")
-    imagens = request.GET.get("imagens") == "1"
-    try:
-        with M.Caixa(conta) as cx:
-            msg = M.interpretar(cx.bruto(pasta, uid, marcar_lido=True), str(uid), pasta, imagens)
-    except M.ErroCorreio as e:
-        messages.error(request, str(e))
-        return redirect(f"{reverse('sec_caixa')}?conta={conta.pk}&pasta={pasta}")
-    return render(request, "secretaria/ler.html", dict(
-        titulo=msg.assunto, conta=conta, m=msg, pasta=pasta, imagens=imagens, pasta_rotulo=M.nome_pasta(pasta)))
+ler = caixa
 
 
 @secretaria_obrigatoria
@@ -110,9 +146,11 @@ def acao(request, pk, uid):
     conta = _conta(request, pk)
     pasta = request.POST.get("pasta", "INBOX")
     oque = request.POST.get("acao")
-    voltar = f"{reverse('sec_caixa')}?conta={request.POST.get('voltar_conta') or conta.pk}&pasta={pasta}"
+    qs = request.POST.get("qs") or urlencode(dict(conta=conta.pk, pasta=pasta))
+    voltar = f"{reverse('sec_caixa')}?{qs}"
     try:
         with M.Caixa(conta) as cx:
+            cache.delete(f"sec-naolidos-{conta.pk}")
             if oque == "arquivar":
                 cx.mover(pasta, uid, cx.pasta_especial("\\Archive", criar=True))
                 messages.success(request, "E-mail arquivado.")
@@ -204,9 +242,10 @@ def escrever(request):
             c = contas.filter(pk=inicial["conta"]).first()
             inicial["corpo"] = _assinatura(c)
         form = EscreverForm(request.user, initial=inicial)
-    return render(request, "secretaria/escrever.html", dict(
-        titulo="Responder" if original and modo != "encaminhar" else ("Encaminhar" if original else "Novo e-mail"),
-        form=form, original=original, ia=ia.disponivel(), conta_id=conta_id, uid=uid, pasta=pasta))
+    ctx = _painel(request, list(contas), conta_id or "todas", modo="escrever")
+    ctx.update(titulo="E-mail", acao_titulo="Responder" if original and modo != "encaminhar" else ("Encaminhar" if original else "Novo e-mail"),
+               form=form, original=original, ia=ia.disponivel(), conta_id=conta_id, uid=uid, pasta_orig=pasta)
+    return render(request, "secretaria/escrever.html", ctx)
 
 
 def _prefixo(p, assunto):
@@ -235,8 +274,9 @@ def sugerir(request):
 # ===================================================================== Contas
 @secretaria_obrigatoria
 def contas(request):
-    return render(request, "secretaria/contas.html", dict(
-        titulo="Contas de e-mail", contas=ContaEmail.objects.filter(usuario=request.user), https=_https_ok(request)))
+    ctx = _painel(request, list(_contas(request)), modo="contas")
+    ctx.update(titulo="E-mail", contas=ContaEmail.objects.filter(usuario=request.user), https=_https_ok(request))
+    return render(request, "secretaria/contas.html", ctx)
 
 
 @secretaria_obrigatoria
@@ -271,5 +311,7 @@ def conta_form(request, pk=None):
             return redirect("sec_conta_editar", pk=conta.pk)
         messages.success(request, "Conta salva e testada: IMAP e SMTP funcionando.")
         return redirect("sec_contas")
-    return render(request, "secretaria/conta_form.html", dict(
-        titulo="Editar conta" if obj else "Nova conta de e-mail", form=form, obj=obj, https=_https_ok(request)))
+    ctx = _painel(request, list(_contas(request)), modo="contas")
+    ctx.update(titulo="E-mail", acao_titulo="Editar conta" if obj else "Nova conta de e-mail", form=form, obj=obj,
+               https=_https_ok(request))
+    return render(request, "secretaria/conta_form.html", ctx)

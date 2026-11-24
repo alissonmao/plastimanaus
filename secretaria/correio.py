@@ -25,6 +25,14 @@ NOMES_PADRAO = {
     "\\Trash": ["INBOX.Trash", "Trash", "INBOX.Lixeira", "Lixeira", "Deleted Items", "INBOX.Deleted Items"],
     "\\Sent": ["INBOX.Sent", "Sent", "INBOX.Enviados", "Enviados", "Sent Items", "INBOX.Sent Items"],
 }
+ESPECIAIS = [  # (flag IMAP, nomes comuns, rótulo, ícone) na ordem em que aparecem
+    ("INBOX", ["INBOX"], "Caixa de entrada", "📥"),
+    ("\\Sent", NOMES_PADRAO["\\Sent"], "Enviados", "📤"),
+    ("\\Drafts", ["INBOX.Drafts", "Drafts", "INBOX.Rascunhos", "Rascunhos"], "Rascunhos", "📝"),
+    ("\\Archive", NOMES_PADRAO["\\Archive"], "Arquivo", "🗄️"),
+    ("\\Junk", ["INBOX.spam", "INBOX.Junk", "Junk", "spam", "INBOX.Spam", "Spam"], "Spam", "⚠️"),
+    ("\\Trash", NOMES_PADRAO["\\Trash"], "Lixeira", "🗑️"),
+]
 NOMES_PT = {"INBOX": "Caixa de entrada", "Archive": "Arquivo", "Trash": "Lixeira", "Sent": "Enviados",
             "Drafts": "Rascunhos", "Junk": "Spam", "spam": "Spam"}
 
@@ -250,6 +258,19 @@ class Caixa:
             out.sort(key=lambda p: (p["nome"] != "INBOX", p["nome"].lower()))
             self._pastas = out
         return self._pastas
+
+    def pastas_organizadas(self):
+        """Pastas para o painel: as especiais primeiro (com ícone), depois as demais em ordem alfabética."""
+        resto = list(self.pastas())
+        out = []
+        for flag, nomes, rotulo, icone in ESPECIAIS:
+            achada = next((p for p in resto if p["nome"] == "INBOX"), None) if flag == "INBOX" else \
+                next((p for p in resto if flag in p["flags"]), None) or next((p for p in resto if p["nome"] in nomes), None)
+            if achada:
+                resto.remove(achada)
+                out.append(dict(nome=achada["nome"], rotulo=rotulo, icone=icone))
+        out += [dict(nome=p["nome"], rotulo=nome_pasta(p["nome"]), icone="📁") for p in resto]
+        return out
 
     def pasta_especial(self, flag: str, criar=False):
         campo = {"\\Archive": "pasta_arquivo", "\\Trash": "pasta_lixeira", "\\Sent": "pasta_enviados"}[flag]
