@@ -1,0 +1,31 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="tabs">
+  <a href="?conta=todas" class="{% if sel == 'todas' %}on{% endif %}">Todas</a>
+  {% for c in contas %}<a href="?conta={{ c.pk }}" class="{% if sel == c.pk|stringformat:'s' %}on{% endif %}">{{ c.empresa }}{% if c.nao_lidos %} <span class="badge warn">{{ c.nao_lidos }}</span>{% endif %}</a>{% endfor %}
+</div>
+<form class="card filtros" method="get"><input type="hidden" name="conta" value="{{ sel }}">
+  {% if pastas %}<label>Pasta<select name="pasta" onchange="this.form.submit()">{% for p in pastas %}<option value="{{ p.nome }}" {% if p.nome == pasta %}selected{% endif %}>{{ p.rotulo }}</option>{% endfor %}</select></label>{% endif %}
+  <label>Buscar (remetente, assunto ou texto)<input name="q" value="{{ q }}" size="34"></label>
+  <button class="btn">Buscar</button>{% if q %}<a class="btn sec" href="?conta={{ sel }}&pasta={{ pasta|urlencode }}">Limpar</a>{% endif %}
+  <span style="flex:1"></span>
+  <a class="btn" href="{% url 'sec_escrever' %}{% if sel != 'todas' %}?conta={{ sel }}{% endif %}">✉️ Novo e-mail</a>
+  <a class="btn sec" href="{% url 'sec_contas' %}">Contas</a>
+</form>
+{% for e in erros %}<div class="msg error">{{ e }}</div>{% endfor %}
+<div class="card"><h2>{{ pasta_rotulo }}{% if q %} · busca “{{ q }}”{% endif %} · {{ total }} e-mail{{ total|pluralize }}</h2>
+<div class="tabela" style="max-height:none"><table class="emails">
+<tr>{% if sel == 'todas' %}<th>Empresa</th>{% endif %}<th>De</th><th>Assunto</th><th></th><th>Data</th></tr>
+{% for m in itens %}<tr class="{% if not m.lido %}novo{% endif %}">
+  {% if sel == 'todas' %}<td><span class="badge">{{ m.conta.empresa }}</span></td>{% endif %}
+  <td title="{{ m.de_email }}"><a href="{% url 'sec_ler' m.conta.pk m.uid %}?pasta={{ m.pasta|urlencode }}">{{ m.de_nome|truncatechars:34 }}</a></td>
+  <td style="white-space:normal"><a href="{% url 'sec_ler' m.conta.pk m.uid %}?pasta={{ m.pasta|urlencode }}">{{ m.assunto|truncatechars:110 }}</a></td>
+  <td>{% if m.anexo %}📎{% endif %}{% if m.respondido %}↩︎{% endif %}</td>
+  <td>{{ m.data|date:"d/m/Y H:i" }}</td></tr>
+{% empty %}<tr><td colspan="5">Nenhum e-mail.</td></tr>{% endfor %}
+</table></div>
+<div class="acoes" style="margin:10px 0 0">
+  {% if pagina %}<a class="btn sec" href="?conta={{ sel }}&pasta={{ pasta|urlencode }}&q={{ q|urlencode }}&p={{ pagina|add:-1 }}">← Mais novos</a>{% endif %}
+  {% if tem_mais %}<a class="btn sec" href="?conta={{ sel }}&pasta={{ pasta|urlencode }}&q={{ q|urlencode }}&p={{ pagina|add:1 }}">Mais antigos →</a>{% endif %}
+</div></div>
+{% endblock %}

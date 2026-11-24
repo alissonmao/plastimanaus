@@ -3,7 +3,7 @@ from django.urls import path
 
 from . import faturamento as fat
 from . import financeiro as fin
-from . import views
+from . import usuarios, views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
@@ -31,6 +31,9 @@ urlpatterns = [
     path("cadastros/<slug:nome>/", views.cadastro_lista, name="cadastro"),
     path("cadastros/<slug:nome>/novo/", views.cadastro_form, name="cadastro_novo"),
     path("cadastros/<slug:nome>/<uuid:pk>/", views.cadastro_form, name="cadastro_editar"),
+    path("usuarios/", usuarios.lista, name="usuarios"),
+    path("usuarios/novo/", usuarios.form, name="usuario_novo"),
+    path("usuarios/<int:pk>/", usuarios.form, name="usuario_editar"),
     path("omie/", views.omie_view, name="omie"),
     path("saude/", lambda r: HttpResponse("ok"), name="saude"),
 ]

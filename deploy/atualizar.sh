@@ -6,6 +6,8 @@ git config --global --get-all safe.directory | grep -qx /opt/plastimanaus || git
 git pull --ff-only
 [ -d .venv ] || python3 -m venv .venv
 .venv/bin/pip install -q -r requirements.txt
+# Chave que criptografa as senhas da Secretaria: gerada uma única vez, fica só no .env
+grep -q '^SECRETARIA_CHAVE=.\+' .env || echo "SECRETARIA_CHAVE=$(.venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> .env
 .venv/bin/python manage.py migrate --noinput
 .venv/bin/python manage.py collectstatic --noinput -v0
 chown -R plastimanaus:www-data /opt/plastimanaus

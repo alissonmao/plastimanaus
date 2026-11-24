@@ -1,0 +1,43 @@
+{% extends "erp/base.html" %}
+{% block conteudo %}
+<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(260px,1fr)">
+<div class="card"><form method="post" enctype="multipart/form-data" class="form escrever" id="fEmail">{% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for f in form.hidden_fields %}{{ f }}{% endfor %}
+  {% for f in form.visible_fields %}<p>{{ f.label_tag }}{{ f }}{{ f.errors }}</p>{% endfor %}
+  <div class="acoes"><button class="btn" onclick="return confirm('Enviar este e-mail?')">Enviar</button>
+  <a class="btn sec" href="{% if original %}{% url 'sec_ler' conta_id uid %}?pasta={{ pasta|urlencode }}{% else %}{% url 'sec_caixa' %}{% endif %}">Cancelar</a></div>
+</form></div>
+<div>
+{% if original %}
+<div class="card"><h2>✨ Sugerir resposta</h2>
+  {% if ia %}
+  <p class="helptext">A IA escreve um rascunho no campo Mensagem. Você revisa e só então envia.</p>
+  <label class="helptext">O que você quer responder (opcional)</label>
+  <textarea id="instrucao" rows="3" style="width:100%" placeholder="ex.: aceitar a proposta, pedir prazo até sexta"></textarea>
+  <div class="acoes" style="margin-top:8px"><button class="btn" type="button" id="bSugerir">Sugerir resposta</button></div>
+  <div id="iaStatus" class="helptext"></div>
+  {% else %}<p class="helptext">Disponível quando a chave da API da Anthropic for configurada no servidor.</p>{% endif %}
+</div>
+<div class="card"><h2>E-mail original</h2><p class="helptext">{{ original.de }} · {{ original.data|date:"d/m/Y H:i" }}</p>
+<pre class="email" style="max-height:420px">{{ original.texto|default:"(veja o e-mail completo na leitura)"|truncatechars:4000 }}</pre></div>
+{% endif %}
+</div></div>
+{% endblock %}
+{% block scripts %}{% if original and ia %}<script>
+document.getElementById("bSugerir").onclick = async () => {
+  const st = document.getElementById("iaStatus"), corpo = document.getElementById("id_corpo"), b = document.getElementById("bSugerir");
+  const atual = corpo.value.split("\n\n\nEm ")[0];
+  if (atual.trim() && atual.trim() !== "--" && !confirm("Substituir o texto atual pelo rascunho da IA?")) return;
+  b.disabled = true; st.textContent = "Escrevendo rascunho…";
+  const fd = new FormData();
+  fd.append("csrfmiddlewaretoken", document.querySelector("[name=csrfmiddlewaretoken]").value);
+  fd.append("conta", "{{ conta_id }}"); fd.append("uid", "{{ uid }}"); fd.append("pasta", "{{ pasta|escapejs }}");
+  fd.append("instrucao", document.getElementById("instrucao").value); fd.append("rascunho", atual);
+  try {
+    const r = await fetch("{% url 'sec_sugerir' %}", {method: "POST", body: fd}); const j = await r.json();
+    if (j.erro) { st.textContent = j.erro; } else { corpo.value = j.texto; st.textContent = "Rascunho pronto. Revise antes de enviar."; corpo.focus(); corpo.setSelectionRange(0, 0); }
+  } catch (e) { st.textContent = "Falha ao falar com o servidor."; }
+  b.disabled = false;
+};
+</script>{% endif %}{% endblock %}

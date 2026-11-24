@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "erp",
+    "secretaria",
 ]
 
 MIDDLEWARE = [
@@ -98,6 +99,10 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
+import sys
+if "test" in sys.argv[1:2]:  # testes renderizam telas sem rodar collectstatic
+    STORAGES["staticfiles"] = {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
@@ -119,3 +124,11 @@ OMIE_APP_KEY = os.getenv("OMIE_APP_KEY", "")
 OMIE_APP_SECRET = os.getenv("OMIE_APP_SECRET", "")
 # Contas correntes do Omie que ficam fora do fluxo de caixa (separadas por vírgula)
 OMIE_EXCLUIR_CONTAS = env_list("OMIE_EXCLUIR_CONTAS", "Santander")
+
+# Secretaria (e-mail, agenda, lembretes, diário, Angel)
+# Chave que criptografa as senhas guardadas no banco. Gerada pelo deploy; não troque, senão as senhas salvas se perdem.
+SECRETARIA_CHAVE = os.getenv("SECRETARIA_CHAVE", "")
+# Só para testes locais: permite cadastrar senhas sem HTTPS
+SECRETARIA_PERMITIR_HTTP = env_bool("SECRETARIA_PERMITIR_HTTP", DEBUG)
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+SECRETARIA_MODELO = os.getenv("SECRETARIA_MODELO", "claude-opus-5-5")

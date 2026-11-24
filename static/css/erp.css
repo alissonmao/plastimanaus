@@ -43,3 +43,10 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.total td{font-we
 .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}.tabs a{padding:6px 12px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--fg)}.tabs a.on{background:var(--primary);color:#fff;border-color:var(--primary)}
 .badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:var(--primary-2);color:var(--primary)}.badge.neg{background:#fde7e7;color:var(--danger)}.badge.warn{background:#fff4e0;color:#b26a00}
 td.grupo{font-weight:600;background:var(--primary-2)}tr.sub td:first-child{padding-left:22px;color:var(--muted)}
+/* Secretaria */
+table.emails tr.novo td{font-weight:700}table.emails td a{color:var(--fg)}
+table.cab th{width:70px;color:var(--muted);border:0;padding:3px 8px}table.cab td{border:0;padding:3px 8px}
+.anexos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+iframe.email{width:100%;height:70vh;border:0;background:#fff;border-radius:8px}
+pre.email{white-space:pre-wrap;word-wrap:break-word;font:14px/1.5 system-ui,sans-serif;margin:0;overflow:auto}
+.form.escrever p{max-width:none}
