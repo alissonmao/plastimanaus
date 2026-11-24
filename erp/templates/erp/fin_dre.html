@@ -1,0 +1,23 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<form class="card filtros" method="get">
+  <label>Ano<select name="ano">{% for a in anos %}<option {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></label>
+  <label>Regime<select name="regime"><option value="caixa" {% if regime == 'caixa' %}selected{% endif %}>Caixa (pagamentos)</option><option value="competencia" {% if regime == 'competencia' %}selected{% endif %}>Competência (emissão)</option></select></label>
+  <button class="btn">Atualizar</button></form>
+<div class="card"><h2>Receitas, despesas e resultado por mês</h2><div class="chart"><canvas id="g"></canvas></div></div>
+<div class="card tabela" style="max-height:none"><table>
+<tr><th>Conta</th>{% for m in meses %}<th class="n">{{ m }}</th>{% endfor %}<th class="n">Total</th></tr>
+{% for e in estrutura %}
+<tr class="total"><td class="grupo">{{ e.tipo }}</td>{% for v in e.totais %}<td class="n grupo">{{ v|num:0 }}</td>{% endfor %}<td class="n grupo">{{ e.total|num:0 }}</td></tr>
+{% for g, vals, tot, cats in e.blocos %}
+<tr><td><details><summary style="cursor:pointer"><b>{{ g }}</b></summary>{% for c, cv, ct in cats %}<div style="padding-left:14px;color:var(--muted)">{{ c }}: {{ ct|brl }}</div>{% endfor %}</details></td>{% for v in vals %}<td class="n">{{ v|num:0 }}</td>{% endfor %}<td class="n"><b>{{ tot|num:0 }}</b></td></tr>
+{% endfor %}{% endfor %}
+<tr class="total"><td>Resultado</td>{% for v in res %}<td class="n {% if v < 0 %}neg{% else %}ok{% endif %}">{{ v|num:0 }}</td>{% endfor %}<td class="n {% if res_total < 0 %}neg{% else %}ok{% endif %}">{{ res_total|num:0 }}</td></tr>
+<tr><td>Margem</td>{% for v in margem %}<td class="n">{{ v|pct }}</td>{% endfor %}<td></td></tr>
+</table></div>
+<p class="helptext">Grupos e categorias vêm do plano de categorias do Omie. Clique no nome do grupo para ver as categorias. Contas excluídas da integração (Santander) não entram.</p>
+{% endblock %}
+{% block scripts %}<script>
+const G = {{ graf|safe }};
+barras("g", G.labels, [{nome:"Receitas", valores:G.rec, cor:"#0f7a3d"}, {nome:"Despesas", valores:G.desp, cor:"#c62828"}, {nome:"Resultado", valores:G.res, tipo:"line", cor:"#2f80ed"}], {moeda:true});
+</script>{% endblock %}

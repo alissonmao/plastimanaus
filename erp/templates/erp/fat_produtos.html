@@ -1,0 +1,19 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="tabs">{% for k, n in opcoes_por %}<a href="?por={{ k }}" class="{% if k == por %}on{% endif %}">Por {{ n|lower }}</a>{% endfor %}</div>
+{% include "erp/_filtros_fat.html" %}
+<div class="kpis">
+  <div class="kpi"><small>Faturamento</small><b>{{ tot.faturamento|brl }}</b></div>
+  <div class="kpi"><small>Itens distintos</small><b>{{ qtd }}</b></div>
+  <div class="kpi"><small>Kg (Sacola/Bobina)</small><b>{{ tot.kg|num:0 }}</b></div>
+  <div class="kpi"><small>R$/kg médio</small><b>{{ tot.rs_kg|num }}</b></div>
+</div>
+<div class="card"><h2>Top 15</h2><div class="chart alto"><canvas id="g"></canvas></div></div>
+<div class="card"><h2>Ranking</h2><div class="tabela"><table>
+<tr><th>Item</th>{% if por == 'produto' or por == 'codigo' %}<th>Linha</th>{% endif %}<th class="n">Faturamento</th><th class="n">%</th><th class="n">Quantidade</th><th class="n">Preço médio</th><th class="n">Kg</th><th class="n">R$/kg</th><th class="n">Clientes</th></tr>
+{% for p in produtos %}<tr><td>{% if por == 'produto' or por == 'codigo' %}<a href="{% url 'fat_notas' %}?q={{ p.nome|urlencode }}&de={{ de|date:'Y-m-d' }}&ate={{ ate|date:'Y-m-d' }}">{{ p.nome|truncatechars:55 }}</a>{% else %}{{ p.nome }}{% endif %}</td>
+{% if por == 'produto' or por == 'codigo' %}<td>{{ p.linha }}</td>{% endif %}<td class="n">{{ p.total|brl }}</td><td class="n">{{ p.pct|pct }}</td><td class="n">{{ p.qtd|num:0 }} {{ p.unidade }}</td><td class="n">{{ p.preco|brl }}</td>
+<td class="n">{% if p.kg %}{{ p.kg|num:0 }}{% endif %}</td><td class="n">{{ p.rs_kg|num }}</td><td class="n">{{ p.n_clientes }}</td></tr>
+{% empty %}<tr><td colspan="9">Sem vendas no período.</td></tr>{% endfor %}</table></div></div>
+{% endblock %}
+{% block scripts %}<script>const G = {{ graf|safe }}; barras("g", G.labels, [{nome:"Faturamento", valores:G.valores, cor:"#0f7a3d"}], {moeda:true, horizontal:true});</script>{% endblock %}

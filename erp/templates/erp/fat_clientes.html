@@ -1,0 +1,19 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+{% include "erp/_filtros_fat.html" %}
+<div class="kpis">
+  <div class="kpi"><small>Clientes que compraram</small><b>{{ clientes|length }}</b></div>
+  <div class="kpi"><small>Clientes novos no período</small><b>{{ novos }}</b><small>sem compra antes de {{ de|date:"d/m/Y" }}</small></div>
+  <div class="kpi"><small>Faturamento</small><b>{{ total|brl }}</b></div>
+  {% for k, v in abc.items %}<div class="kpi"><small>Curva {{ k }}</small><b>{{ v.qtd }} clientes</b><small>{{ v.total|brl }}</small></div>{% endfor %}
+</div>
+<div class="card"><h2>Top 15 clientes</h2><div class="chart alto"><canvas id="g"></canvas></div></div>
+<div class="card"><h2>Clientes</h2><div class="tabela"><table>
+<tr><th>#</th><th>Cliente</th><th>Cidade/UF</th><th>Vendedor</th><th class="n">Faturamento</th><th class="n">%</th><th>Curva</th><th class="n">Compras</th><th class="n">Ticket</th><th class="n">Kg</th><th>Última compra</th></tr>
+{% for c in clientes %}<tr><td>{{ c.pos }}</td><td><a href="?{{ request.GET.urlencode }}&cliente={{ c.nome|urlencode }}">{{ c.nome|truncatechars:42 }}</a></td>
+<td>{{ c.cidade }}{% if c.uf %}/{{ c.uf }}{% endif %}</td><td>{{ c.vendedor }}</td><td class="n">{{ c.total|brl }}</td><td class="n">{{ c.pct|pct }}</td>
+<td><span class="badge {% if c.abc == 'C' %}warn{% endif %}">{{ c.abc }}</span></td><td class="n">{{ c.compras }}</td><td class="n">{{ c.ticket|brl }}</td><td class="n">{% if c.kg %}{{ c.kg|num:0 }}{% endif %}</td>
+<td>{{ c.ultima|date:"d/m/Y" }} <small>({{ c.dias }}d)</small></td></tr>
+{% empty %}<tr><td colspan="11">Nenhum cliente no período.</td></tr>{% endfor %}</table></div></div>
+{% endblock %}
+{% block scripts %}<script>const G = {{ graf|safe }}; barras("g", G.labels, [{nome:"Faturamento", valores:G.valores, cor:"#0f7a3d"}], {moeda:true, horizontal:true});</script>{% endblock %}

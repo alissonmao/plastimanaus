@@ -1,0 +1,17 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="kpis">
+  <div class="kpi"><small>Total vencido a receber</small><b class="neg">{{ total|brl }}</b></div>
+  <div class="kpi"><small>Títulos vencidos</small><b>{{ qtd }}</b></div>
+  <div class="kpi"><small>Clientes inadimplentes</small><b>{{ clientes|length }}</b></div>
+  <div class="kpi"><small>Taxa de inadimplência</small><b class="neg">{{ taxa|pct }}</b><small>vencido ÷ total já vencido no ano</small></div>
+  {% for f in faixas %}<div class="kpi"><small>{{ f }}</small><b>{{ tot_faixa|item:f|brl }}</b></div>{% endfor %}
+</div>
+<div class="acoes"><a class="btn sec" href="?exportar=1">Exportar Excel</a><a class="btn sec" href="{% url 'fin_receber' %}?situacao=atrasado">Ver títulos</a></div>
+<div class="card"><h2>Vencido por faixa de atraso</h2><div class="chart"><canvas id="g"></canvas></div></div>
+<div class="card"><h2>Clientes</h2><div class="tabela"><table><tr><th>Cliente</th><th>CNPJ/CPF</th><th class="n">Títulos</th><th>Mais antigo</th>{% for f in faixas %}<th class="n">{{ f }}</th>{% endfor %}<th class="n">Total</th></tr>
+{% for n, c in clientes %}<tr><td><a href="{% url 'fin_receber' %}?situacao=atrasado&q={{ n|urlencode }}">{{ n|truncatechars:40 }}</a></td><td>{{ c.cnpj }}</td><td class="n">{{ c.qtd }}</td><td>{{ c.mais_antigo|date:"d/m/Y" }}</td>
+{% for f in faixas %}<td class="n">{% with v=c.faixas|item:f %}{% if v %}{{ v|brl }}{% endif %}{% endwith %}</td>{% endfor %}<td class="n neg">{{ c.valor|brl }}</td></tr>
+{% empty %}<tr><td colspan="9">Nenhum título vencido. 🎉</td></tr>{% endfor %}</table></div></div>
+{% endblock %}
+{% block scripts %}<script>const G = {{ graf|safe }}; barras("g", G.labels, [{nome:"Vencido", valores:G.valores, cor:"#c62828"}], {moeda:true});</script>{% endblock %}

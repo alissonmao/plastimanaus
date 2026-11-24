@@ -1,0 +1,24 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="acoes"><a class="btn sec" href="{% if r.receber %}{% url 'fin_receber' %}{% else %}{% url 'fin_pagar' %}{% endif %}">← Voltar</a></div>
+<div class="grid g2"><div class="card"><h2>{% if r.receber %}Conta a receber{% else %}Conta a pagar{% endif %}</h2><table>
+<tr><th>{% if r.receber %}Cliente{% else %}Fornecedor{% endif %}</th><td>{{ r.fornecedor }}</td></tr>
+<tr><th>CNPJ/CPF</th><td>{{ r.cnpj_cpf|default:"" }}</td></tr>
+<tr><th>Documento / parcela</th><td>{{ r.numero_documento|default:"" }} {{ r.parcela|default:"" }}</td></tr>
+<tr><th>Categoria</th><td>{{ r.categoria }} <small>({{ r.grupo }})</small></td></tr>
+<tr><th>Departamento</th><td>{{ r.departamento|default:"" }}</td></tr>
+<tr><th>Conta corrente</th><td>{{ r.conta_corrente|default:"" }}</td></tr>
+<tr><th>Forma</th><td>{{ r.forma_pagamento|default:"" }}</td></tr>
+<tr><th>Emissão</th><td>{{ r.data_emissao|date:"d/m/Y" }}</td></tr>
+<tr><th>Vencimento</th><td>{{ r.vencimento|date:"d/m/Y" }}</td></tr>
+<tr><th>Pagamento</th><td>{{ r.data_pagamento|date:"d/m/Y" }}</td></tr>
+<tr><th>Situação</th><td>{{ r.situacao }}</td></tr>
+<tr><th>Valor</th><td>{{ r.valor_conta|brl|cut:"-" }}</td></tr>
+<tr><th>Pago</th><td>{{ r.valor_pago|brl|cut:"-" }}</td></tr>
+<tr><th>Em aberto</th><td><b>{{ r.saldo_aberto|brl }}</b></td></tr>
+<tr><th>Observação</th><td style="white-space:normal">{{ r.observacao|default:"" }}</td></tr>
+{% if r.omie_codigo %}<tr><th>Código Omie</th><td>{{ r.omie_codigo }}</td></tr>{% endif %}
+</table></div>
+<div class="card"><h2>Outros títulos de {{ r.fornecedor|truncatechars:40 }}</h2><div class="tabela"><table><tr><th>Emissão</th><th>Vencimento</th><th>Situação</th><th class="n">Valor</th></tr>
+{% for o in outros %}<tr><td><a href="{% url 'fin_titulo' o.pk %}">{{ o.data_emissao|date:"d/m/Y" }}</a></td><td>{{ o.vencimento|date:"d/m/Y" }}</td><td>{{ o.situacao }}</td><td class="n">{{ o.valor_conta|brl }}</td></tr>{% endfor %}</table></div></div></div>
+{% endblock %}

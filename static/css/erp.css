@@ -36,3 +36,10 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.total td{font-we
 .login{max-width:360px;margin:12vh auto}.login img{height:80px;display:block;margin:0 auto 14px}
 .bar{height:8px;background:var(--primary-2);border-radius:4px;overflow:hidden;min-width:80px}.bar i{display:block;height:100%;background:var(--primary)}
 @media(max-width:800px){.app{display:block}.side{width:auto;height:auto;position:static}main{padding:14px}.g2{grid-template-columns:1fr}}
+.side details.sec{margin:2px 0}.side summary{cursor:pointer;list-style:none;padding:8px 10px;border-radius:8px;font-weight:600;font-size:13px}
+.side summary::-webkit-details-marker{display:none}.side summary:hover{background:rgba(255,255,255,.07)}
+.side summary::after{content:"▸";float:right;opacity:.6;transition:transform .15s}.side details[open] summary::after{transform:rotate(90deg)}
+.side details a{padding-left:28px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}.tabs a{padding:6px 12px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--fg)}.tabs a.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:var(--primary-2);color:var(--primary)}.badge.neg{background:#fde7e7;color:var(--danger)}.badge.warn{background:#fff4e0;color:#b26a00}
+td.grupo{font-weight:600;background:var(--primary-2)}tr.sub td:first-child{padding-left:22px;color:var(--muted)}

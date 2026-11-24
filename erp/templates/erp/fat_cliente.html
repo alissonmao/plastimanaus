@@ -1,0 +1,23 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="acoes"><a class="btn sec" href="{% url 'fat_clientes' %}">← Clientes</a></div>
+<div class="kpis">
+  <div class="kpi"><small>Faturamento no período</small><b>{{ tot.faturamento|brl }}</b><small>{{ de|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }}</small></div>
+  <div class="kpi"><small>Faturamento histórico</small><b>{{ tot_geral|brl }}</b><small>desde {{ primeira|date:"d/m/Y" }}</small></div>
+  <div class="kpi"><small>Última compra</small><b>{{ ultima|date:"d/m/Y" }}</b></div>
+  <div class="kpi"><small>Kg (Sacola/Bobina)</small><b>{{ tot.kg|num:0 }}</b><small>R$/kg {{ tot.rs_kg|num }}</small></div>
+  <div class="kpi"><small>Em aberto a receber</small><b>{{ aberto|brl }}</b></div>
+  <div class="kpi"><small>Atrasado</small><b class="{% if atrasado %}neg{% endif %}">{{ atrasado|brl }}</b></div>
+</div>
+<p class="helptext">CNPJ/CPF {{ cnpj|default:"—" }} · {{ info.cidade|default:"" }} {{ info.estado|default:"" }} · Vendedor {{ info.vendedor|default:"—" }}</p>
+<div class="card"><h2>Compras por período (histórico completo)</h2><div class="chart"><canvas id="g"></canvas></div></div>
+<div class="grid g2">
+  <div class="card"><h2>Produtos no período</h2>{% include "erp/_ranking.html" with rk=prods rotulo="Produto" %}</div>
+  <div class="card"><h2>Documentos no período</h2><div class="tabela" style="max-height:420px"><table><tr><th>Data</th><th>Documento</th><th class="n">Itens</th><th class="n">Total</th></tr>
+  {% for d in docs %}<tr><td>{{ d.data|date:"d/m/Y" }}</td><td><a href="{% url 'fat_notas' %}?q={{ nome|urlencode }}&nf={{ d.doc|urlencode }}&de={{ d.data|date:'Y-m-d' }}&ate={{ d.data|date:'Y-m-d' }}">{{ d.doc }}</a></td><td class="n">{{ d.itens }}</td><td class="n">{{ d.total|brl }}</td></tr>{% endfor %}</table></div></div>
+</div>
+<div class="card"><h2>Títulos em aberto</h2><div class="tabela"><table><tr><th>Vencimento</th><th>Documento</th><th>Situação</th><th class="n">Em aberto</th></tr>
+{% for t in abertos %}<tr><td>{{ t.vencimento|date:"d/m/Y" }}{% if t.atrasado %} <span class="badge neg">vencido</span>{% endif %}</td><td><a href="{% url 'fin_titulo' t.pk %}">{{ t.numero_documento|default:"ver" }} {{ t.parcela|default:"" }}</a></td><td>{{ t.situacao }}</td><td class="n">{{ t.saldo_aberto|brl }}</td></tr>
+{% empty %}<tr><td colspan="4">Nada em aberto.</td></tr>{% endfor %}</table></div></div>
+{% endblock %}
+{% block scripts %}<script>const G = {{ graf|safe }}; barras("g", G.labels, [{nome:"Faturamento", valores:G.valores, cor:"#0f7a3d"}], {moeda:true});</script>{% endblock %}

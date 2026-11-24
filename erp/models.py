@@ -263,12 +263,35 @@ class FluxoCaixa(Base):
     valor_conta = models.DecimalField(max_digits=16, decimal_places=2)
     valor_pago = models.DecimalField(max_digits=16, decimal_places=2, default=0)
     conta_corrente = models.CharField(max_length=200, blank=True, null=True)
+    # Campos vindos da API do Omie (vazios nos lançamentos importados de planilha)
+    data_vencimento = models.DateField("vencimento", null=True, blank=True, db_index=True)
+    data_previsao = models.DateField("previsão", null=True, blank=True)
+    numero_documento = models.CharField("documento", max_length=100, blank=True, null=True)
+    parcela = models.CharField(max_length=20, blank=True, null=True)
+    omie_codigo = models.BigIntegerField("código Omie", null=True, blank=True, db_index=True)
+    observacao = models.TextField("observação", blank=True, null=True)
 
     class Meta:
         db_table = "fluxo_caixa"
         ordering = ["data_emissao"]
         verbose_name = "lançamento"
         verbose_name_plural = "fluxo de caixa"
+
+    @property
+    def receber(self):
+        return self.valor_conta > 0
+
+    @property
+    def quitado(self):
+        return (self.situacao or "").strip() in ("Pago", "Recebido")
+
+    @property
+    def saldo_aberto(self):
+        return max(abs(self.valor_conta) - abs(self.valor_pago or 0), 0) if not self.quitado else 0
+
+    @property
+    def vencimento(self):
+        return self.data_vencimento or self.data_previsao or self.data_emissao
 
 
 class SincronizacaoOmie(models.Model):

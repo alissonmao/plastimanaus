@@ -1,0 +1,15 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+{% include "erp/_filtros_fat.html" %}
+<div class="card"><h2>Faturamento por vendedor e período</h2><div class="chart alto"><canvas id="g"></canvas></div></div>
+<div class="card"><h2>Vendedores · {{ total|brl }}</h2><div class="tabela"><table>
+<tr><th>Vendedor</th><th class="n">Faturamento</th><th class="n">%</th><th class="n">Clientes</th><th class="n">Documentos</th><th class="n">Ticket</th><th class="n">Kg</th><th class="n">R$/kg</th></tr>
+{% for v in vendedores %}<tr><td><a href="?{{ request.GET.urlencode }}&vendedor_det={{ v.nome|urlencode }}">{{ v.nome }}</a></td><td class="n">{{ v.total|brl }}</td><td class="n">{{ v.pct|pct }}</td>
+<td class="n">{{ v.n_clientes }}</td><td class="n">{{ v.n_docs }}</td><td class="n">{{ v.ticket|brl }}</td><td class="n">{% if v.kg %}{{ v.kg|num:0 }}{% endif %}</td><td class="n">{{ v.rs_kg|num }}</td></tr>
+{% empty %}<tr><td colspan="8">Sem vendas no período.</td></tr>{% endfor %}</table></div></div>
+{% if det %}<div class="grid g2">
+  <div class="card"><h2>{{ det.nome }}: principais clientes</h2>{% include "erp/_ranking.html" with rk=det.clientes rotulo="Cliente" %}</div>
+  <div class="card"><h2>{{ det.nome }}: por linha</h2>{% include "erp/_ranking.html" with rk=det.linhas rotulo="Linha" %}</div>
+</div>{% endif %}
+{% endblock %}
+{% block scripts %}<script>const G = {{ graf|safe }}; barras("g", G.labels, G.series, {moeda:true, empilhado:true});</script>{% endblock %}

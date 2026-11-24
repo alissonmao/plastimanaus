@@ -1,0 +1,7 @@
+<form class="card filtros" method="get">{% include "erp/_periodo.html" %}
+  <label>Linha<select name="linha" multiple>{% for l in op_linhas %}<option {% if l in linhas_sel %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Vendedor<select name="vendedor" multiple>{% for v in op_vendedores %}<option {% if v in vend_sel %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+  <label>Busca<input name="q" value="{{ q }}" placeholder="cliente, produto, NF, CNPJ"></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a>
+  <a class="btn sec" href="?{{ request.GET.urlencode }}&exportar=1">Exportar Excel</a>
+</form>

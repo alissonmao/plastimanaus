@@ -1,0 +1,14 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<form class="card filtros" method="get">
+  <label>De<input type="date" name="de" value="{{ de|date:'Y-m-d' }}"></label><label>Até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>
+  <label>Conta<select name="conta"><option value="">Resumo de todas</option>{% for c in contas %}<option {% if c == conta %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+  <button class="btn">Ver</button>{% if conta %}<a class="btn sec" href="?{{ request.GET.urlencode }}&exportar=1">Exportar Excel</a>{% endif %}</form>
+<div class="card"><h2>Movimento por conta no período</h2><table><tr><th>Conta</th><th class="n">Lançamentos</th><th class="n">Entradas</th><th class="n">Saídas</th><th class="n">Saldo do período</th></tr>
+{% for x in resumo %}<tr><td><a href="?de={{ de|date:'Y-m-d' }}&ate={{ ate|date:'Y-m-d' }}&conta={{ x.conta|urlencode }}">{{ x.conta }}</a></td><td class="n">{{ x.qtd }}</td><td class="n ok">{{ x.ent|brl }}</td><td class="n neg">{{ x.sai|brl }}</td><td class="n {% if x.saldo < 0 %}neg{% endif %}">{{ x.saldo|brl }}</td></tr>{% endfor %}
+<tr class="total"><td>Total</td><td></td><td class="n ok">{{ tot.ent|brl }}</td><td class="n neg">{{ tot.sai|brl }}</td><td></td></tr></table></div>
+{% if conta %}<div class="card"><h2>Extrato: {{ conta }}</h2><div class="tabela"><table><tr><th>Data</th><th>Cliente/Fornecedor</th><th>Categoria</th><th>Documento</th><th class="n">Valor</th><th class="n">Acumulado</th></tr>
+{% for r, a in movs %}<tr><td>{{ r.data_pagamento|date:"d/m/Y" }}</td><td><a href="{% url 'fin_titulo' r.pk %}">{{ r.fornecedor|truncatechars:40 }}</a></td><td>{{ r.categoria|truncatechars:30 }}</td><td>{{ r.numero_documento|default:"" }}</td><td class="n {% if r.valor_pago < 0 %}neg{% else %}ok{% endif %}">{{ r.valor_pago|brl }}</td><td class="n">{{ a|brl }}</td></tr>
+{% empty %}<tr><td colspan="6">Sem movimento.</td></tr>{% endfor %}</table></div>
+<p class="helptext">Acumulado a partir de zero no início do período: o Omie não envia o saldo bancário.</p></div>{% endif %}
+{% endblock %}

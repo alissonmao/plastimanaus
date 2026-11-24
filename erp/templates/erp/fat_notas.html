@@ -1,0 +1,23 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+{% include "erp/_filtros_fat.html" %}
+<div class="kpis">
+  <div class="kpi"><small>Documentos</small><b>{{ tot.qtd }}</b><small>{{ tot.nfs }} notas fiscais</small></div>
+  <div class="kpi"><small>Faturamento</small><b>{{ tot.total|brl }}</b></div>
+  <div class="kpi"><small>Valor médio por documento</small><b>{{ tot.ticket|brl }}</b></div>
+</div>
+{% if detalhe %}<div class="card"><h2>{{ detalhe.doc }} · {{ detalhe.cliente }} · {{ detalhe.data|date:"d/m/Y" }}</h2>
+<p class="helptext">Vendedor: {{ detalhe.vendedor|default:"—" }} · {{ detalhe.cidade }} {{ detalhe.uf }}</p>
+<div class="tabela"><table><tr><th>Produto</th><th>Linha</th><th class="n">Qtd</th><th>Un</th><th class="n">Unitário</th><th class="n">Kg</th><th class="n">Total</th></tr>
+{% for r in detalhe.rows %}<tr><td>{{ r.produto|truncatechars:60 }}</td><td>{{ r.linha }}</td><td class="n">{{ r.quantidade|num }}</td><td>{{ r.unidade|default:"" }}</td><td class="n">{{ r.valor_unitario|brl }}</td><td class="n">{% if r.kg %}{{ r.kg|num }}{% endif %}</td><td class="n">{{ r.total|brl }}</td></tr>{% endfor %}
+<tr class="total"><td colspan="5">Total</td><td class="n">{{ detalhe.kg|num }}</td><td class="n">{{ detalhe.total|brl }}</td></tr></table></div></div>{% endif %}
+<div class="card"><h2>Faturamento por período</h2><div class="chart"><canvas id="g"></canvas></div></div>
+<div class="card"><h2>Documentos{% if truncado %} (mostrando 500){% endif %}</h2><div class="tabela"><table>
+<tr><th>Data</th><th>Documento</th><th>Cliente</th><th>Vendedor</th><th>Cidade/UF</th><th class="n">Itens</th><th class="n">Kg</th><th class="n">Total</th></tr>
+{% for n in notas %}<tr><td>{{ n.data|date:"d/m/Y" }}</td><td><a href="?{{ request.GET.urlencode }}&nf={{ n.doc|urlencode }}">{{ n.doc }}</a></td>
+<td><a href="{% url 'fat_clientes' %}?cliente={{ n.cliente|urlencode }}">{{ n.cliente|truncatechars:40 }}</a></td><td>{{ n.vendedor }}</td><td>{{ n.cidade }}{% if n.uf %}/{{ n.uf }}{% endif %}</td>
+<td class="n">{{ n.itens }}</td><td class="n">{% if n.kg %}{{ n.kg|num }}{% endif %}</td><td class="n">{{ n.total|brl }}</td></tr>
+{% empty %}<tr><td colspan="8">Nenhum documento no período.</td></tr>{% endfor %}</table></div></div>
+{% endblock %}
+{% block scripts %}<script>const G = {{ graf|safe }};
+barras("g", G.labels, [{nome:"Faturamento", valores:G.valores, cor:"#0f7a3d"}, {nome:"Documentos", valores:G.qtd, tipo:"line", eixo:"y2", cor:"#2f80ed"}], {moeda:true, y2:true});</script>{% endblock %}

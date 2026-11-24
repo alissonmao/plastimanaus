@@ -1,0 +1,25 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<form class="card filtros" method="get">{% include "erp/_periodo.html" %}
+  <label>Conta<select name="conta" multiple>{% for c in op_contas %}<option {% if c in contas_sel %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+  <button class="btn">Atualizar</button><a class="btn sec" href="?">Padrão</a></form>
+<div class="kpis">
+  <div class="kpi"><small>Entradas realizadas</small><b class="ok">{{ tot.ent|brl }}</b></div>
+  <div class="kpi"><small>Saídas realizadas</small><b class="neg">{{ tot.sai|brl }}</b></div>
+  <div class="kpi"><small>A receber previsto</small><b>{{ tot.ent_prev|brl }}</b></div>
+  <div class="kpi"><small>A pagar previsto</small><b>{{ tot.sai_prev|brl }}</b></div>
+  <div class="kpi"><small>Atrasados a receber</small><b class="neg">{{ tot.atraso_rec|brl }}</b><small>lançados no período atual</small></div>
+  <div class="kpi"><small>Atrasados a pagar</small><b class="neg">{{ tot.atraso_pag|brl }}</b></div>
+</div>
+<div class="card"><h2>Realizado × previsto e saldo acumulado</h2><div class="chart alto"><canvas id="g"></canvas></div>
+<p class="helptext">Realizado pela data do pagamento; previsto pelo vencimento dos títulos em aberto. O saldo acumulado parte de zero no início do período (o Omie não envia o saldo bancário inicial).</p></div>
+<div class="card tabela"><table><tr><th>Período</th><th class="n">Entradas</th><th class="n">Saídas</th><th class="n">A receber</th><th class="n">A pagar</th><th class="n">Saldo</th><th class="n">Acumulado</th></tr>
+{% for l in linhas %}<tr><td>{{ l.label }}</td><td class="n ok">{{ l.ent|brl }}</td><td class="n neg">{{ l.sai|brl }}</td><td class="n">{{ l.ent_prev|brl }}</td><td class="n">{{ l.sai_prev|brl }}</td><td class="n {% if l.saldo < 0 %}neg{% endif %}">{{ l.saldo|brl }}</td><td class="n {% if l.acumulado < 0 %}neg{% endif %}">{{ l.acumulado|brl }}</td></tr>{% endfor %}
+</table></div>
+{% endblock %}
+{% block scripts %}<script>
+const G = {{ graf|safe }};
+barras("g", G.labels, [{nome:"Entradas", valores:G.ent, cor:"#0f7a3d"}, {nome:"A receber", valores:G.ent_prev, cor:"#8fd3a8"},
+  {nome:"Saídas", valores:G.sai, cor:"#c62828"}, {nome:"A pagar", valores:G.sai_prev, cor:"#f0a3a3"},
+  {nome:"Acumulado", valores:G.acumulado, tipo:"line", eixo:"y2", cor:"#2f80ed"}], {empilhado:true, moeda:true, y2:true});
+</script>{% endblock %}

@@ -204,6 +204,10 @@ def buscar_fluxo(de: date, ate: date) -> list[dict]:
             forma_pagamento=FORMAS.get(d.get("cTipo") or "", "N/D"), situacao=sit, tipo=TIPO_RECEBER if nat == "R" else TIPO_PAGAR,
             valor_conta=sinal * dec(d.get("nValorTitulo")), valor_pago=sinal * pago,
             conta_corrente=contas.get(d.get("nCodCC")) or None,
+            data_vencimento=data_omie(d.get("dDtVenc")), data_previsao=data_omie(d.get("dDtPrevisao")),
+            numero_documento=(d.get("cNumDocFiscal") or d.get("cNumTitulo") or "").strip() or None,
+            parcela=(d.get("cNumParcela") or "").strip() or None, omie_codigo=d.get("nCodTitulo"),
+            observacao=(d.get("observacao") or "").strip() or None,
         ))
     return rows
 

@@ -1,0 +1,50 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+{% if sem_vencimento %}<div class="msg">Os vencimentos ainda não foram trazidos do Omie; por enquanto a data de emissão é usada como vencimento. Rode a sincronização em Sistema → Integração Omie.</div>{% endif %}
+<div class="tabs">
+<a href="?situacao=aberto" class="{% if situacao == 'aberto' %}on{% endif %}">Em aberto</a>
+<a href="?situacao=atrasado" class="{% if situacao == 'atrasado' %}on{% endif %}">Atrasados</a>
+<a href="?situacao=hoje" class="{% if situacao == 'hoje' %}on{% endif %}">Vencem hoje</a>
+<a href="?situacao=avencer" class="{% if situacao == 'avencer' %}on{% endif %}">A vencer</a>
+<a href="?situacao=quitado" class="{% if situacao == 'quitado' %}on{% endif %}">{% if receber %}Recebidos{% else %}Pagos{% endif %}</a>
+<a href="?situacao=todos" class="{% if situacao == 'todos' %}on{% endif %}">Todos</a>
+</div>
+<div class="kpis">
+  <div class="kpi"><small>Total em aberto</small><b>{{ k.aberto|brl }}</b></div>
+  <div class="kpi"><small>Atrasado</small><b class="neg">{{ k.atrasado|brl }}</b><small>{{ k.qtd_atrasado }} títulos</small></div>
+  <div class="kpi"><small>Vence hoje</small><b>{{ k.hoje|brl }}</b></div>
+  <div class="kpi"><small>Próximos 7 dias</small><b>{{ k.prox7|brl }}</b></div>
+  <div class="kpi"><small>Próximos 30 dias</small><b>{{ k.prox30|brl }}</b></div>
+  <div class="kpi"><small>{% if receber %}Recebido{% else %}Pago{% endif %} no mês</small><b class="ok">{{ k.quitado_mes|brl }}</b></div>
+</div>
+<form class="card filtros" method="get"><input type="hidden" name="situacao" value="{{ situacao }}">
+  <label>Vencimento de<input type="date" name="de" value="{{ de|date:'Y-m-d' }}"></label>
+  <label>até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>
+  <label>{% if receber %}Cliente{% else %}Fornecedor{% endif %}, documento ou CNPJ<input name="q" value="{{ q }}"></label>
+  <label>Categoria<select name="categoria" multiple>{% for c in op_categorias %}<option {% if c in cats %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+  <label>Conta<select name="conta" multiple>{% for c in op_contas %}<option {% if c in contas_sel %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?situacao={{ situacao }}">Limpar</a>
+  <a class="btn sec" href="?{{ request.GET.urlencode }}&exportar=1">Exportar Excel</a>
+</form>
+<div class="grid g2">
+  <div class="card"><h2>Em aberto por faixa de vencimento</h2><div class="chart"><canvas id="gAging"></canvas></div></div>
+  <div class="card"><h2>Vencimentos das próximas semanas</h2><div class="chart"><canvas id="gSem"></canvas></div></div>
+</div>
+<div class="grid g2">
+  <div class="card"><h2>Faixas</h2><table><tr><th>Faixa</th><th class="n">Títulos</th><th class="n">Em aberto</th></tr>
+  {% for n, q, v in aging %}<tr><td>{% if 'Vencido' in n %}<span class="badge neg">{{ n }}</span>{% else %}{{ n }}{% endif %}</td><td class="n">{{ q }}</td><td class="n">{{ v|brl }}</td></tr>{% endfor %}</table></div>
+  <div class="card"><h2>Maiores {% if receber %}devedores{% else %}credores{% endif %}</h2><div class="tabela" style="max-height:340px"><table><tr><th>Nome</th><th class="n">Títulos</th><th class="n">Em aberto</th><th class="n">Atrasado</th></tr>
+  {% for n, v in top %}<tr><td><a href="?situacao=aberto&q={{ n|urlencode }}">{{ n|truncatechars:40 }}</a></td><td class="n">{{ v.2 }}</td><td class="n">{{ v.0|brl }}</td><td class="n {% if v.1 %}neg{% endif %}">{{ v.1|brl }}</td></tr>{% endfor %}</table></div></div>
+</div>
+<div class="card"><h2>Títulos ({{ k.qtd }}{% if truncado %}, mostrando 500{% endif %}) · {{ k.total_lista|brl }}</h2><div class="tabela"><table>
+<tr><th>Vencimento</th><th>{% if receber %}Cliente{% else %}Fornecedor{% endif %}</th><th>Documento</th><th>Parc.</th><th>Categoria</th><th>Conta</th><th>Situação</th><th class="n">Valor</th><th class="n">{% if receber %}Recebido{% else %}Pago{% endif %}</th><th class="n">Em aberto</th></tr>
+{% for r in rows %}<tr><td>{{ r.vencimento|date:"d/m/Y" }}{% if r.st == 'atrasado' %} <span class="badge neg">{{ r.dias }}d</span>{% elif r.st == 'hoje' %} <span class="badge warn">hoje</span>{% endif %}</td>
+<td><a href="{% url 'fin_titulo' r.pk %}">{{ r.fornecedor|truncatechars:38 }}</a></td><td>{{ r.numero_documento|default:"" }}</td><td>{{ r.parcela|default:"" }}</td><td>{{ r.categoria|truncatechars:28 }}</td><td>{{ r.conta_corrente|default:"" }}</td><td>{{ r.situacao }}</td>
+<td class="n">{{ r.valor_conta|brl|cut:"-" }}</td><td class="n">{{ r.valor_pago|brl|cut:"-" }}</td><td class="n">{% if r.saldo_aberto %}{{ r.saldo_aberto|brl }}{% endif %}</td></tr>
+{% empty %}<tr><td colspan="10">Nenhum título.</td></tr>{% endfor %}</table></div></div>
+{% endblock %}
+{% block scripts %}<script>
+const G = {{ graf|safe }};
+barras("gAging", G.aging.labels, [{nome:"Em aberto", valores:G.aging.valores, cor:"{% if receber %}#0f7a3d{% else %}#c62828{% endif %}"}], {moeda:true, horizontal:true});
+barras("gSem", G.semanas.labels, [{nome:"A vencer", valores:G.semanas.valores, cor:"#2f80ed"}], {moeda:true});
+</script>{% endblock %}
