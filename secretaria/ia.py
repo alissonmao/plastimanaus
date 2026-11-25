@@ -25,18 +25,25 @@ def cliente_ia(timeout=90.0):
     return anthropic.Anthropic(api_key=config.obter("ANTHROPIC_API_KEY"), timeout=timeout, max_retries=2)
 
 
-def modelo():
-    return settings.SECRETARIA_MODELO
+def modelo(rapido=False):
+    """Sonnet para conversa e textos; rapido=True = Haiku (classificar e-mail, diário, briefing falado), bem mais barato."""
+    return settings.SECRETARIA_MODELO_RAPIDO if rapido else settings.SECRETARIA_MODELO
 
 
-def json_ia(sistema: str, pedido: str, schema: dict, max_tokens=2000, effort="low"):
+def extras(m):
+    """Fallback do servidor (se a IA recusar, outro modelo responde): o Haiku não tem, então não vai."""
+    return {} if "haiku" in m else dict(betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+
+
+def json_ia(sistema: str, pedido: str, schema: dict, max_tokens=2000, effort="low", rapido=False):
     """Pergunta à IA e recebe JSON validado pelo schema (structured outputs)."""
     import json
     if not disponivel():
         raise ErroIA("A IA ainda não está configurada (falta a chave da Anthropic em Sistema → Integrações).")
     try:
+        m = modelo(rapido)
         resp = cliente_ia().beta.messages.create(
-            model=modelo(), max_tokens=max_tokens, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+            model=m, max_tokens=max_tokens, **extras(m),
             output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
             system=sistema, messages=[{"role": "user", "content": pedido}])
     except anthropic.APIError as e:
@@ -50,13 +57,14 @@ def json_ia(sistema: str, pedido: str, schema: dict, max_tokens=2000, effort="lo
         raise ErroIA("A IA devolveu uma resposta fora do formato.") from e
 
 
-def texto_ia(sistema: str, pedido: str, max_tokens=3000, effort="low") -> str:
+def texto_ia(sistema: str, pedido: str, max_tokens=3000, effort="low", rapido=False) -> str:
     """Pergunta simples à IA, resposta em texto."""
     if not disponivel():
         raise ErroIA("A IA ainda não está configurada (falta a chave da Anthropic em Sistema → Integrações).")
     try:
+        m = modelo(rapido)
         resp = cliente_ia().beta.messages.create(
-            model=modelo(), max_tokens=max_tokens, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
+            model=m, max_tokens=max_tokens, **extras(m),
             output_config={"effort": effort}, system=sistema, messages=[{"role": "user", "content": pedido}])
     except anthropic.APIError as e:
         raise ErroIA(f"Falha na IA: {type(e).__name__}") from e

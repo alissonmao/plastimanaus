@@ -65,6 +65,6 @@ def falado(usuario):
     try:
         return ia.texto_ia("Você é a Angel, secretaria executiva. Reescreva o briefing abaixo para ser falado em voz alta, em português do Brasil: "
                            "natural, caloroso e objetivo, no máximo 120 palavras, sem listas, sem emojis, sem markdown. Não acrescente fatos.",
-                           base, 800)
+                           base, 800, rapido=True)
     except ia.ErroIA:
         return base

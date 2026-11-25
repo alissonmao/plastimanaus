@@ -49,7 +49,7 @@ def _classificar_palavras(resumos):
 
 def _classificar_ia(conta, resumos, trechos):
     linhas = [f"[{i}] De: {r.de_nome} <{r.de_email}>\nAssunto: {r.assunto}\nTrecho: {trechos.get(r.uid, '')[:600]}" for i, r in enumerate(resumos)]
-    res = ia.json_ia(SISTEMA.format(empresa=conta.empresa), "<emails>\n" + "\n\n".join(linhas) + "\n</emails>", SCHEMA, 4000)
+    res = ia.json_ia(SISTEMA.format(empresa=conta.empresa), "<emails>\n" + "\n\n".join(linhas) + "\n</emails>", SCHEMA, 4000, rapido=True)
     por_n = {e["n"]: e for e in res.get("emails", [])}
     padrao = _classificar_palavras(resumos)
     return [por_n.get(i) or padrao[i] for i in range(len(resumos))], True
@@ -110,6 +110,8 @@ def rodar(usuario, avisar=True):
             novos = triar_conta(conta)
         except M.ErroCorreio as e:
             erros.append(f"{conta.empresa}: {e}")
+            # marca como feita nesta hora: sem isso a rotina (a cada minuto) tentava de novo todas as contas a cada minuto
+            EstadoTriagem.objects.update_or_create(conta=conta, defaults={"executado_em": timezone.now()})
             continue
         relevantes = [t for t in novos if t.categoria in RELEVANTES and (t.importancia >= 3 or t.categoria == "critico")]
         if relevantes:

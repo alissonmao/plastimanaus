@@ -131,5 +131,7 @@ SECRETARIA_CHAVE = os.getenv("SECRETARIA_CHAVE", "")
 # Só para testes locais: permite cadastrar senhas sem HTTPS
 SECRETARIA_PERMITIR_HTTP = env_bool("SECRETARIA_PERMITIR_HTTP", DEBUG)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-SECRETARIA_MODELO = os.getenv("SECRETARIA_MODELO", "claude-opus-5-5")
+# Economia de crédito (25/11): conversa, rascunho e análise no Sonnet; classificação (triagem, diário, briefing falado) no Haiku.
+SECRETARIA_MODELO = os.getenv("SECRETARIA_MODELO", "claude-sonnet-5-5")
+SECRETARIA_MODELO_RAPIDO = os.getenv("SECRETARIA_MODELO_RAPIDO", "claude-haiku-5-5")
 SECRETARIA_CALDAV_URL = os.getenv("SECRETARIA_CALDAV_URL", "")  # vazio = iCloud (só para testes locais)

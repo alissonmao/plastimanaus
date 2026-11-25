@@ -245,7 +245,7 @@ class EmailTest(TestCase):
         self.assertEqual(r.status_code, 200, r.content)
         self.assertTrue(r.json()["texto"].startswith("Olá João, envio hoje."))
         kw = cr.call_args.kwargs
-        self.assertEqual(kw["model"], "claude-opus-5-5")
+        self.assertEqual(kw["model"], "claude-sonnet-5-5")
         self.assertIn("confirmar entrega", kw["messages"][0]["content"])
 
 

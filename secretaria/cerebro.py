@@ -53,6 +53,8 @@ FERRAMENTAS = [
                                                        "instrucao": {"type": "string", "description": "O que responder"}}, "required": ["ref"]}},
     {"name": "briefing", "description": "Resumo do dia: compromissos, lembretes, e-mails importantes e pendências.", "input_schema": {"type": "object", "properties": {}}},
 ]
+# cópia com cache_control na última ferramenta (cacheia a lista toda)
+FERRAMENTAS_CACHE = FERRAMENTAS[:-1] + [{**FERRAMENTAS[-1], "cache_control": {"type": "ephemeral"}}]
 
 
 def _dt(txt):
@@ -130,9 +132,11 @@ def conversar(usuario, texto, historico=None, canal="site", voz=False):
     cliente = ia.cliente_ia(timeout=120)
     for _ in range(8):
         try:
+            # cache: ferramentas e instruções vão uma vez por conversa; nas rodadas seguintes saem ~10x mais baratas
             resp = cliente.beta.messages.create(
-                model=ia.modelo(), max_tokens=2000, betas=["server-side-fallback-2026-07-01"], fallbacks="default",
-                output_config={"effort": "low"}, system=sistema, tools=FERRAMENTAS, messages=limpo)
+                model=ia.modelo(), max_tokens=2000, **ia.extras(ia.modelo()),
+                output_config={"effort": "low"}, system=[{"type": "text", "text": sistema, "cache_control": {"type": "ephemeral"}}],
+                tools=FERRAMENTAS_CACHE, messages=limpo)
         except anthropic.APIError as e:
             log.warning("IA falhou: %s", type(e).__name__)
             return "Tive um problema para falar com a IA agora. Tente de novo em instantes."

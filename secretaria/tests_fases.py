@@ -150,6 +150,22 @@ class CerebroTest(Base):
         self.assertEqual(l.origem, "whatsapp")
         nomes = {f["name"] for f in cr.call_args.kwargs["tools"]}
         self.assertFalse(any("apagar" in n or "enviar" in n or "excluir" in n for n in nomes))   # nada destrutivo
+        kw = cr.call_args.kwargs                                            # economia: Sonnet + cache das ferramentas e instruções
+        self.assertEqual(kw["model"], "claude-sonnet-5-5")
+        self.assertEqual(kw["tools"][-1]["cache_control"], {"type": "ephemeral"})
+        self.assertEqual(kw["system"][0]["cache_control"], {"type": "ephemeral"})
+
+    def test_classificar_vai_no_haiku_sem_fallback(self):
+        from . import ia
+        resp = SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text='{"ok": true}')])
+        with mock.patch("secretaria.ia.disponivel", return_value=True), \
+                mock.patch("anthropic.resources.beta.messages.Messages.create", return_value=resp) as cr:
+            ia.json_ia("s", "p", {"type": "object"}, rapido=True)
+            self.assertEqual(cr.call_args.kwargs["model"], "claude-haiku-5-5")
+            self.assertNotIn("fallbacks", cr.call_args.kwargs)
+            ia.json_ia("s", "p", {"type": "object"})
+            self.assertEqual(cr.call_args.kwargs["model"], "claude-sonnet-5-5")
+            self.assertEqual(cr.call_args.kwargs["fallbacks"], "default")
 
 
 @mock.patch("imaplib.IMAP4_SSL", FakeIMAP)
@@ -182,6 +198,21 @@ class RotinasTest(Base):
         self.assertEqual(n.situacao, "enviada")
         self.assertEqual(env.call_args.args[0], "+5592991234567")
         self.assertEqual(env.call_args.args[2], b"mp3")                # briefing vai em áudio
+
+    def test_triagem_com_erro_nao_repete_a_cada_minuto(self):
+        from . import correio, rotinas
+        from .models import ContaEmail
+        PerfilSecretaria.objects.create(usuario=self.u, whatsapp="92991234567", briefing_ativo=False)
+        c = ContaEmail(usuario=self.u, empresa="Plasti", email="a@plasti.com.br", login="a@plasti.com.br", imap_host="x", smtp_host="x")
+        c.senha = "senha-errada"
+        c.save()
+        dez = timezone.localtime().replace(hour=10, minute=0)
+        dez -= timedelta(days=1) if dez.weekday() == 6 else timedelta()   # domingo não tem triagem
+        with mock.patch("secretaria.triagem.triar_conta", side_effect=correio.ErroCorreio("senha recusada")) as tr:
+            for m in range(3):                             # 10:00, 10:01, 10:02 (o relógio do servidor acompanha)
+                with mock.patch("django.utils.timezone.now", return_value=dez + timedelta(minutes=m)):
+                    rotinas.rodar(dez + timedelta(minutes=m))
+        self.assertEqual(tr.call_count, 1)                 # tenta de novo só na hora seguinte
 
     def test_triagem_avisa_por_empresa(self):
         from . import rotinas

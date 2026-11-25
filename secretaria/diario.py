@@ -40,7 +40,7 @@ def empresas_do(usuario):
 def classificar(reg: RegistroDiario):
     """Classifica com a IA. Sem chave, fica pendente (pode reclassificar depois)."""
     try:
-        r = ia.json_ia(SISTEMA.format(empresas=", ".join(empresas_do(reg.usuario))), f"<registro>\n{reg.texto}\n</registro>", SCHEMA, 800)
+        r = ia.json_ia(SISTEMA.format(empresas=", ".join(empresas_do(reg.usuario))), f"<registro>\n{reg.texto}\n</registro>", SCHEMA, 800, rapido=True)
     except ia.ErroIA as e:
         reg.erro_ia = str(e)[:300]
         reg.save(update_fields=["erro_ia"])
