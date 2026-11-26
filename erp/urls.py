@@ -3,11 +3,14 @@ from django.urls import path
 
 from . import faturamento as fat
 from . import financeiro as fin
-from . import usuarios, views
+from . import problemas_views, usuarios, views
 
 from . import auditoria
 
 urlpatterns = [
+    path("problemas/", problemas_views.tela, name="problemas"),
+    path("problemas/dispensar/", problemas_views.dispensar, name="problemas_dispensar"),
+    path("problemas/desfazer/<int:pk>/", problemas_views.desfazer, name="problemas_desfazer"),
     path("sistema/auditoria-omie/", auditoria.tela, name="auditoria_omie"),
     path("", views.dashboard, name="dashboard"),
     path("apontamentos/", views.apontamentos, name="apontamentos"),

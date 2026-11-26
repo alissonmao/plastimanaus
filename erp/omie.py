@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import requests
@@ -298,3 +298,22 @@ def sincronizar(de: date, ate: date, fluxo=True, vendas=True, saida=print, regis
         partes.append(f"Faturamento: {len(rows)} itens de NF ({ap} substituídos)")
         saida(partes[-1])
     return "; ".join(partes)
+
+
+# --------------------------------------------------------------------- saldos das contas
+def atualizar_saldos(saida=print) -> int:
+    """Lê o saldo atual de cada conta corrente (ListarExtrato). Só leitura no Omie."""
+    from .models import SaldoContaOmie
+    hoje = date.today()
+    n = 0
+    for c in paginar("geral/contacorrente/", "ListarResumoContasCorrentes", "conta_corrente_lista", {"apenas_importado_api": "N"}):
+        r = chamar("financas/extrato/", "ListarExtrato", {"nCodCC": c["nCodCC"], "dPeriodoInicial": br(hoje - timedelta(days=1)),
+                                                          "dPeriodoFinal": br(hoje)})
+        if "nSaldoAtual" not in r:
+            continue
+        SaldoContaOmie.objects.update_or_create(codigo=c["nCodCC"], defaults=dict(
+            descricao=(r.get("cDescricao") or c.get("descricao") or "").strip(), saldo=dec(r["nSaldoAtual"]),
+            fluxo_caixa=r.get("cFluxoCaixa", "S") == "S"))
+        n += 1
+    saida(f"Saldos de {n} contas atualizados")
+    return n

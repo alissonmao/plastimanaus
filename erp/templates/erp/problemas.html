@@ -1,0 +1,52 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="pb-topo"><span class="sub">Última conferência: <b>{{ conferido|date:"d/m/Y H:i" }}</b> · confere de novo a cada 5 minutos{% if vendedor %} · mostrando a carteira de <b>{{ vendedor }}</b>{% endif %}</span>
+  <a class="btn" href="?{% if area %}area={{ area|urlencode }}{% endif %}{% if ver_disp %}ver=dispensados{% endif %}">Conferir agora</a></div>
+
+<div class="pb-quadros">
+  <a class="pbq critico" href="?">{{ cont.critico }}<small>Críticos · resolver hoje</small></a>
+  <a class="pbq atencao" href="?">{{ cont.atencao }}<small>Atenção · nesta semana</small></a>
+  <a class="pbq saber" href="?">{{ cont.saber }}<small>Para saber · acompanhar</small></a>
+  <a class="pbq disp {% if ver_disp %}on{% endif %}" href="?ver=dispensados">{{ n_disp }}<small>Dispensados · ver lista</small></a>
+</div>
+
+{% if ver_disp %}<div class="pb-areas"><a class="chip" href="?">← Voltar para os problemas</a><b>Dispensados</b> — escondidos até a data; depois voltam se o problema continuar.</div>
+{% else %}<div class="pb-areas"><a class="chip {% if not area %}on{% endif %}" href="?">Todas <b>{{ total }}</b></a>
+  {% for a, n in por_area.items %}<a class="chip {% if area == a %}on{% endif %}" href="?area={{ a|urlencode }}">{{ a }} <b>{{ n }}</b></a>{% endfor %}</div>{% endif %}
+
+{% for r in lista %}
+<div class="card pb {{ r.regra.gravidade }}">
+  <div class="pb-cab">
+    <div class="pb-txt">
+      <div class="pb-tags"><span class="tg {{ r.regra.gravidade }}">{{ r.grav_rotulo }}</span><span class="tg area">{{ r.regra.area }}</span>
+        {% if r.dispensa %}<span class="tg area">Dispensado por {{ r.dispensa.usuario.get_full_name|default:r.dispensa.usuario.username|default:"—" }} · volta em {{ r.dispensa.volta_em|date:"d/m/Y" }}</span>{% endif %}</div>
+      <h2>{{ r.titulo }}</h2>
+      <p>{{ r.descricao }}</p>
+    </div>
+    <div class="pb-num">{% if not r.extra.sem_valor and r.valor is not None %}<b>{{ r.valor|brl }}</b>{% endif %}
+      {% if not r.extra.sem_qtd %}<small>{{ r.n }} {{ r.extra.rot_qtd|default:"itens" }}</small>{% endif %}</div>
+  </div>
+  <div class="pb-como"><b>Como corrigir:</b> {{ r.regra.como_corrigir }}{% if r.url %} <a href="{{ r.url }}">Ir para a tela →</a>{% endif %}</div>
+  {% if r.itens %}<details class="pb-itens"><summary class="btn sec">Abrir ({{ r.itens|length }})</summary>
+    <div class="tabela" style="max-height:420px"><table><tr>{% for k, t, tipo in r.colunas %}<th class="{% if tipo != 'txt' and tipo != 'data' %}n{% endif %}">{{ t }}</th>{% endfor %}</tr>
+    {% for it in r.itens_vis %}<tr>{% for k, t, tipo in r.colunas %}{% with v=it|item:k %}
+      {% if tipo == "brl" %}<td class="n {% if v < 0 %}neg{% endif %}">{{ v|brl }}</td>
+      {% elif tipo == "data" %}<td>{{ v|date:"d/m/Y"|default:"—" }}</td>
+      {% elif tipo == "pct" %}<td class="n">{{ v|pct }}</td>
+      {% elif tipo == "kg" %}<td class="n">{{ v|num:0 }} kg</td>
+      {% elif tipo == "int" %}<td class="n">{{ v }}</td>
+      {% else %}<td>{{ v|default:"—" }}</td>{% endif %}{% endwith %}{% endfor %}</tr>{% endfor %}
+    </table></div>{% if r.itens|length > 300 %}<p class="sub">Mostrando os 300 primeiros de {{ r.itens|length }}.</p>{% endif %}</details>{% endif %}
+  <div class="pb-rodape"><span class="sub">{{ r.fonte_txt }}</span>
+    {% if r.dispensa %}<form method="post" action="{% url 'problemas_desfazer' r.dispensa.pk %}">{% csrf_token %}<input type="hidden" name="voltar" value="{{ request.get_full_path }}"><button class="lnk">Desfazer dispensa</button></form>
+    {% elif not r.erro %}<form method="post" action="{% url 'problemas_dispensar' %}">{% csrf_token %}<input type="hidden" name="regra" value="{{ r.regra.id }}"><input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+      Dispensar: <button class="lnk" name="dias" value="1">até amanhã</button> · <button class="lnk" name="dias" value="7">por 7 dias</button></form>{% endif %}</div>
+</div>
+{% empty %}
+<div class="card vazio">{% if ver_disp %}Nenhum problema dispensado no momento.{% else %}Nenhum problema encontrado{% if area %} em {{ area }}{% endif %}. 🎉{% endif %}</div>
+{% endfor %}
+{% endblock %}
+{% block scripts %}<script>
+// Confere de novo a cada 5 minutos, se nenhuma lista estiver aberta
+setInterval(() => { if (!document.querySelector("details.pb-itens[open]")) location.reload(); }, 300000);
+</script>{% endblock %}

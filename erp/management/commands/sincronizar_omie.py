@@ -40,6 +40,11 @@ class Command(BaseCommand):
         try:
             msg = omie.sincronizar(de, ate, fluxo=so != "vendas", vendas=so != "fluxo", saida=self.stdout.write, registro=reg)
             reg.status, reg.mensagem = "ok", msg
+            if so != "vendas":
+                try:
+                    omie.atualizar_saldos(saida=self.stdout.write)
+                except Exception as e:  # saldo é complemento: não derruba a sincronização
+                    self.stderr.write(f"Saldos das contas: {e}")
         except Exception as e:  # registra o erro para aparecer na tela
             reg.status, reg.mensagem = "erro", str(e)[:2000]
             raise CommandError(str(e))

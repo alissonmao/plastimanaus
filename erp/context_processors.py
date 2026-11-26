@@ -65,6 +65,15 @@ def menu(request):
         for l in ativos:
             l["ativo"] = len(l["url"]) == max(len(x["url"]) for x in ativos)
         secoes.append(dict(titulo=titulo, icone=icone, itens=links, aberta=any(l["ativo"] for l in links), direto=titulo == "Painel"))
+    url = reverse("problemas")
+    try:
+        from .problemas_views import criticos
+        n = criticos(request.user)
+    except Exception:
+        n = None
+    sino = dict(titulo="Problemas para resolver", icone="🔔", itens=[dict(url=url, label="Problemas para resolver", ativo=path.startswith(url))],
+                aberta=path.startswith(url), direto=True, badge=n)
+    secoes.insert(1 if secoes and secoes[0]["titulo"] == "Painel" else 0, sino)
     if request.user.is_staff:
         url = reverse("auditoria_omie")
         secoes[-1]["itens"].append(dict(url=url, label="Auditoria Omie", ativo=path.startswith(url)))

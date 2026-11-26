@@ -8,7 +8,7 @@
 </head><body><div class="app">
 <nav class="side">
   <div class="logo"><img src="{% static 'img/logo.png' %}" alt="Plasti Manaus"></div>
-  {% for sec in menu %}{% if sec.direto %}<a class="direto {% if sec.aberta %}on{% endif %}" href="{{ sec.itens.0.url }}">{{ sec.icone }} {{ sec.titulo }}</a>
+  {% for sec in menu %}{% if sec.direto %}<a class="direto {% if sec.aberta %}on{% endif %}" href="{{ sec.itens.0.url }}">{{ sec.icone }} {{ sec.titulo }}{% if sec.badge %} <span class="badge">{{ sec.badge }}</span>{% endif %}</a>
   {% else %}<details class="sec" {% if sec.aberta %}open{% endif %}><summary>{{ sec.icone }} {{ sec.titulo }}</summary>
     {% for it in sec.itens %}<a href="{{ it.url }}" class="{% if it.ativo %}on{% endif %}">{{ it.label }}</a>{% endfor %}
   </details>{% endif %}{% endfor %}

@@ -344,3 +344,38 @@ class UsuarioOmie(models.Model):
 
     class Meta:
         db_table = "usuarios_omie"
+
+
+class SaldoContaOmie(models.Model):
+    """Saldo atual de cada conta corrente no Omie (lido junto com a sincronização de hora em hora)."""
+    codigo = models.BigIntegerField(unique=True)
+    descricao = models.CharField(max_length=200)
+    saldo = models.DecimalField(max_digits=16, decimal_places=2)
+    fluxo_caixa = models.BooleanField("entra no fluxo de caixa", default=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "saldo_conta_omie"
+        verbose_name = "saldo de conta (Omie)"
+        verbose_name_plural = "saldos de contas (Omie)"
+
+
+class PerfilUsuario(models.Model):
+    """Dados extras do usuário: vendedor ligado (vê só a própria carteira em Problemas para resolver)."""
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="perfil_erp")
+    vendedor = models.CharField("vendedor (nome no Omie)", max_length=200, blank=True)
+
+    class Meta:
+        db_table = "perfil_usuario"
+
+
+class DispensaProblema(models.Model):
+    """Problema escondido até uma data. Depois dela, se o problema continuar, ele volta."""
+    regra = models.CharField(max_length=60, db_index=True)
+    volta_em = models.DateField("volta em")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "dispensa_problema"
+        ordering = ["-criado_em"]

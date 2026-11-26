@@ -8,10 +8,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from secretaria.acesso import GRUPO
 
+from .models import PerfilUsuario
+
+AREAS = ["Financeiro", "Vendas", "Produção", "Cadastro"]
+
 
 class UsuarioForm(forms.ModelForm):
     secretaria = forms.BooleanField(label="Acesso à Secretaria", required=False,
                                     help_text="E-mail, agenda, lembretes, diário e Angel. Cada usuário vê só os próprios dados.")
+    areas = forms.MultipleChoiceField(label="Áreas em Problemas para resolver", required=False, choices=[(a, a) for a in AREAS],
+                                      widget=forms.CheckboxSelectMultiple,
+                                      help_text="Quais avisos a pessoa vê. Administrador vê todos.")
+    vendedor = forms.CharField(label="Vendedor (nome no Omie)", required=False, max_length=200,
+                               help_text="Preencha só para vendedor: ele verá apenas os avisos da própria carteira.")
     senha1 = forms.CharField(label="Nova senha", required=False, strip=False, widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
                              help_text="Deixe em branco para manter a atual.")
     senha2 = forms.CharField(label="Repita a nova senha", required=False, strip=False, widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}))
@@ -27,6 +36,9 @@ class UsuarioForm(forms.ModelForm):
         super().__init__(*a, **kw)
         if self.instance.pk:
             self.fields["secretaria"].initial = self.instance.groups.filter(name=GRUPO).exists()
+            self.fields["areas"].initial = list(self.instance.groups.filter(name__in=AREAS).values_list("name", flat=True))
+            p = PerfilUsuario.objects.filter(usuario=self.instance).first()
+            self.fields["vendedor"].initial = p.vendedor if p else ""
         else:
             self.fields["senha1"].required = True
             self.fields["senha1"].help_text = ""
@@ -74,6 +86,10 @@ def form(request, pk=None):
             u.save()
             grupo, _ = Group.objects.get_or_create(name=GRUPO)
             (u.groups.add if f.cleaned_data["secretaria"] else u.groups.remove)(grupo)
+            for a in AREAS:
+                g, _ = Group.objects.get_or_create(name=a)
+                (u.groups.add if a in f.cleaned_data["areas"] else u.groups.remove)(g)
+            PerfilUsuario.objects.update_or_create(usuario=u, defaults=dict(vendedor=f.cleaned_data["vendedor"].strip()))
             messages.success(request, f"Usuário {u.username} salvo.")
             return redirect("usuarios")
     return render(request, "erp/form.html", dict(titulo=f"Usuário {obj.username}" if obj else "Novo usuário",
