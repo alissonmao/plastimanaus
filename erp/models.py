@@ -379,3 +379,16 @@ class DispensaProblema(models.Model):
     class Meta:
         db_table = "dispensa_problema"
         ordering = ["-criado_em"]
+
+
+class Favorito(models.Model):
+    """Tela favoritada pelo usuário: aparece no menu Rotina."""
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favoritos")
+    url = models.CharField(max_length=300)
+    titulo = models.CharField(max_length=200)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "favorito"
+        ordering = ["criado_em"]
+        constraints = [models.UniqueConstraint(fields=["usuario", "url"], name="favorito_unico")]

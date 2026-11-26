@@ -74,6 +74,9 @@ def menu(request):
     sino = dict(titulo="Problemas para resolver", icone="🔔", itens=[dict(url=url, label="Problemas para resolver", ativo=path.startswith(url))],
                 aberta=path.startswith(url), direto=True, badge=n)
     secoes.insert(1 if secoes and secoes[0]["titulo"] == "Painel" else 0, sino)
+    favs = list(request.user.favoritos.all())
+    rotina = [dict(url=f.url, label=f.titulo, ativo=path == f.url) for f in favs]
+    secoes.insert(0, dict(titulo="Rotina", icone="⭐", itens=rotina, aberta=True, direto=False, vazio=not rotina))
     if request.user.is_staff:
         url = reverse("auditoria_omie")
         secoes[-1]["itens"].append(dict(url=url, label="Auditoria Omie", ativo=path.startswith(url)))
@@ -82,4 +85,4 @@ def menu(request):
         if any(i["ativo"] for i in secoes[-1]["itens"]):
             secoes[-1]["aberta"] = True
         secoes[-1]["itens"].append(dict(url="/admin/", label="Administração", ativo=False))
-    return {"menu": secoes, "tem_secretaria": secretaria}
+    return {"menu": secoes, "tem_secretaria": secretaria, "favorito_atual": any(f.url == path for f in favs)}
