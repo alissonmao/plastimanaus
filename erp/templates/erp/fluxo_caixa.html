@@ -1,36 +1,93 @@
-{% extends "erp/base.html" %}{% load fmt %}
+{% extends "erp/base.html" %}{% load fmt static %}
 {% block conteudo %}
 <div class="acoes"><a class="btn sec" href="{% url 'fluxo_importar' %}">Importar planilha</a><a class="btn sec" href="?{{ request.GET.urlencode }}&exportar=1">Exportar Excel</a></div>
-<form class="card filtros" method="get">{% include "erp/_periodo.html" %}
-  <label>Situação<select name="situacao"><option value="todos">Todos</option><option value="realizado" {% if situacao == 'realizado' %}selected{% endif %}>Realizado</option><option value="aberto" {% if situacao == 'aberto' %}selected{% endif %}>Em aberto</option></select></label>
-  <label>Grupo<select name="grupo" multiple>{% for l in op_grupos %}<option {% if l in grupos_sel %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
-  <label>Conta corrente<select name="conta" multiple>{% for l in op_contas %}<option {% if l in contas_sel %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
-  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a></form>
-<div class="kpis">
-  <div class="kpi"><small>Entradas</small><b class="ok">{{ kpis.entradas|brl }}</b></div>
-  <div class="kpi"><small>Gastos</small><b class="neg">{{ kpis.gastos|brl }}</b></div>
-  <div class="kpi"><small>Saldo</small><b class="{% if kpis.saldo < 0 %}neg{% else %}ok{% endif %}">{{ kpis.saldo|brl }}</b></div>
-  <div class="kpi"><small>Margem</small><b>{{ kpis.margem|pct }}</b></div>
-  <div class="kpi"><small>A receber em aberto</small><b>{{ kpis.aberto_receber|brl }}</b></div>
-  <div class="kpi"><small>A pagar em aberto</small><b>{{ kpis.aberto_pagar|brl }}</b></div>
-  <div class="kpi"><small>Atrasados a receber</small><b class="neg">{{ kpis.atrasados_receber|brl }} ({{ kpis.qtd_atrasados_receber }})</b></div>
-  <div class="kpi"><small>Atrasados a pagar</small><b class="neg">{{ kpis.atrasados_pagar|brl }} ({{ kpis.qtd_atrasados_pagar }})</b></div>
+
+<form id="ff" class="card filtros fx" method="get">
+  <input type="hidden" name="ord" value="{{ ordem }}"><input type="hidden" name="asc" value="{% if asc %}1{% else %}0{% endif %}">
+  <label>Período<select name="at" class="auto" id="fAt">
+    <option value="todos" {% if atalho == 'todos' %}selected{% endif %}>Todo período</option>
+    {% for m, r in rot_meses %}<option value="m:{{ m }}" {% if atalho == 'm:'|add:m %}selected{% endif %}>{{ r }}</option>{% endfor %}
+    <option value="u3" {% if atalho == 'u3' %}selected{% endif %}>Últimos 3 meses</option>
+    <option value="u6" {% if atalho == 'u6' %}selected{% endif %}>Últimos 6 meses</option>
+    <option value="ano" {% if atalho == 'ano' %}selected{% endif %}>Ano atual</option>
+    <option value="custom" {% if atalho == 'custom' %}selected{% endif %}>Personalizado…</option></select></label>
+  <label>De<input type="date" name="de" value="{{ de|date:'Y-m-d' }}" class="dt"></label>
+  <label>Até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}" class="dt"></label>
+  <div class="campo"><span>Grupo</span>{% include "erp/_multi.html" with nome="grupo" opcoes=op_grupos sel=grupos_sel todos="Todos" %}</div>
+  <div class="campo"><span>Conta corrente</span>{% include "erp/_multi.html" with nome="conta" opcoes=op_contas sel=contas_sel todos="Todas" %}</div>
+  <div class="campo"><span>Status</span>
+    <details class="multi"><summary>{% if status_sel %}Status: {{ status_sel|length }}{% else %}Status: Todos{% endif %}</summary><div class="pop">
+      <div class="atalhos"><button type="button" data-st="todos">Todos</button>
+        <button type="button" data-st="{{ st_realizados|join:'|' }}">Só realizados</button><button type="button" data-st="{{ st_aberto|join:'|' }}">Só em aberto</button></div>
+      <div class="lista">{% for s, cor in op_status %}<label><input type="checkbox" name="st" value="{{ s }}" {% if s in status_sel %}checked{% endif %}><i style="background:{{ cor }}"></i>{{ s }}</label>{% endfor %}</div>
+      <button class="btn">Aplicar</button></div></details></div>
+  <label>Agrupar por<select name="g" class="auto">{% for k, v in granularidades %}<option value="{{ k }}" {% if k == g %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a>
+</form>
+
+<div class="kpis k4">
+  <div class="kpi"><small>Total de entradas</small><b class="ok">{{ kpis.entradas|brl }}</b></div>
+  <div class="kpi"><small>Total de gastos</small><b class="neg">{{ kpis.gastos|brl }}</b></div>
+  <div class="kpi"><small>Saldo do período</small><b class="{% if kpis.saldo < 0 %}neg{% elif kpis.saldo > 0 %}ok{% endif %}">{{ kpis.saldo|brl }}</b></div>
+  <div class="kpi"><small>Margem de caixa</small><b class="{% if kpis.margem is not None and kpis.margem < 0 %}neg{% elif kpis.margem %}ok{% endif %}">{{ kpis.margem|pct }}</b></div>
+  <div class="kpi" title="Títulos de clientes ainda não recebidos (a vencer + atrasados), conforme os filtros. Não inclui o saldo de recebimentos parciais."><small>Em aberto a receber ⓘ</small><b>{{ kpis.aberto_receber|brl }}</b></div>
+  <div class="kpi" title="Títulos de fornecedores ainda não pagos (a vencer + atrasados), conforme os filtros. Não inclui o saldo de pagamentos parciais."><small>Em aberto a pagar ⓘ</small><b>{{ kpis.aberto_pagar|brl }}</b></div>
+  <div class="kpi" title="Parte do em aberto a receber já vencida (situação Atrasado ou Atrasado com boleto gerado)."><small>Atrasados a receber ⓘ</small><b class="neg">{{ kpis.atrasados_receber|brl }}</b><em>{{ kpis.qtd_atrasados_receber }} contas</em></div>
+  <div class="kpi" title="Parte do em aberto a pagar já vencida (situação Atrasado ou Atrasado com boleto gerado)."><small>Atrasados a pagar ⓘ</small><b class="neg">{{ kpis.atrasados_pagar|brl }}</b><em>{{ kpis.qtd_atrasados_pagar }} contas</em></div>
 </div>
-<div class="card"><h2>Entradas × gastos e saldo acumulado</h2><div class="chart alto"><canvas id="gSerie"></canvas></div></div>
-<div class="grid g2">
-  <div class="card"><h2>Gastos por grupo</h2><div class="chart"><canvas id="gGastos"></canvas></div></div>
-  <div class="card"><h2>Entradas por categoria</h2>{% include "erp/_ranking.html" with rk=entradas_cat rotulo="Categoria" %}</div>
-  <div class="card"><h2>Maiores fornecedores (gastos)</h2>{% include "erp/_ranking.html" with rk=gastos_forn rotulo="Fornecedor" %}</div>
-  <div class="card"><h2>Por situação</h2><div class="tabela"><table><tr><th>Situação</th><th class="n">Qtd</th><th class="n">A receber</th><th class="n">A pagar</th></tr>
-  {% for s, v in situacoes %}<tr><td>{{ s }}</td><td class="n">{{ v.0 }}</td><td class="n">{{ v.1|brl }}</td><td class="n">{{ v.2|brl }}</td></tr>{% endfor %}</table></div></div>
+
+<div class="card"><div class="cab-card"><h2>{{ t_serie }}</h2>
+  {% if mostrar_mes %}<label class="mini">Mês<select name="mes" form="ff" class="auto">{% for m, r in rot_meses_rows %}<option value="{{ m }}" {% if m == mes %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></label>{% endif %}</div>
+  <div class="chart" style="height:340px"><canvas id="gSerie"></canvas></div></div>
+
+<div class="grid g2x">
+  <div class="card"><h2>Saldo acumulado{{ sufixo }} (R$)</h2><div class="chart" style="height:320px"><canvas id="gSaldo"></canvas></div></div>
+  <div class="card"><h2>Contas por situação{{ sufixo }} (R$ e %)</h2>
+    <div class="grid duas">{% for chave, titulo, d in sit_pares %}
+      <div><h3>{{ titulo }}</h3>{% if d.fatias %}<div class="chart" style="height:220px"><canvas id="gSit{{ chave }}"></canvas></div>
+        <ul class="leg">{% for x in d.fatias %}<li><i style="background:{{ x.cor }}"></i><span>{{ x.situacao }}</span><b>{{ x.valor|brl }}</b><small>{{ x.pct|pct }}</small></li>{% endfor %}
+        <li class="tot"><span>Total</span><b>{{ d.total|brl }}</b><small>100%</small></li></ul>
+        {% else %}<p class="vazio">Sem dados no filtro</p>{% endif %}</div>{% endfor %}</div></div>
 </div>
-<div class="card"><h2>Lançamentos (até 200)</h2><div class="tabela"><table><tr><th>Emissão</th><th>Pagamento</th><th>Fornecedor/Cliente</th><th>Grupo</th><th>Categoria</th><th>Situação</th><th class="n">Valor conta</th><th class="n">Valor pago</th><th>Conta</th></tr>
-{% for r in lancamentos %}<tr><td>{{ r.data_emissao|date:"d/m/Y" }}</td><td>{{ r.data_pagamento|date:"d/m/Y" }}</td><td>{{ r.fornecedor|truncatechars:36 }}</td><td>{{ r.grupo }}</td><td>{{ r.categoria|truncatechars:30 }}</td><td>{{ r.situacao }}</td><td class="n {% if r.valor_conta < 0 %}neg{% endif %}">{{ r.valor_conta|brl }}</td><td class="n {% if r.valor_pago < 0 %}neg{% endif %}">{{ r.valor_pago|brl }}</td><td>{{ r.conta_corrente|default:"" }}</td></tr>{% endfor %}
-</table></div></div>
+
+<div class="card"><div class="cab-card"><div><h2>Contas em aberto por data (R$)</h2><p class="sub">Todas as situações, exceto Pago e Recebido · data de emissão</p></div>
+  <label class="mini">Tipo<select name="ab" form="ff" class="auto"><option value="receber" {% if modo_ab == 'receber' %}selected{% endif %}>A receber</option><option value="pagar" {% if modo_ab == 'pagar' %}selected{% endif %}>A pagar</option><option value="ambos" {% if modo_ab == 'ambos' %}selected{% endif %}>Ambos</option></select></label></div>
+  {% if aberto.dias %}<div class="scrollx"><div class="chart" style="height:360px" id="wAberto"><canvas id="gAberto"></canvas></div></div>
+  <p class="nota">Total em aberto {% if modo_ab == 'receber' %}a receber{% elif modo_ab == 'pagar' %}a pagar{% else %}(receber − pagar){% endif %}: <b>{{ aberto.total|brl }}</b> · {{ aberto.qtd }} títulos · {{ aberto.dias.0|slice:"8:10" }}/{{ aberto.dias.0|slice:"5:7" }}/{{ aberto.dias.0|slice:"0:4" }} a {% with u=aberto.dias|last %}{{ u|slice:"8:10" }}/{{ u|slice:"5:7" }}/{{ u|slice:"0:4" }}{% endwith %}</p>
+  {% else %}<p class="vazio">Nenhuma conta em aberto no filtro</p>{% endif %}</div>
+
+<div class="card"><h2>Gastos por grupo{{ sufixo }} (R$ e %)</h2><div class="chart" id="wGastosGrupo"><canvas id="gGastosGrupo"></canvas></div></div>
+<div class="card"><h2>Entradas por grupo{{ sufixo }} (R$ e %)</h2><div class="sunburst"><div class="chart" style="height:380px"><canvas id="gEntradas"></canvas></div><ul class="leg" id="lEntradas"></ul></div></div>
+<div class="card"><h2>Evolução dos gastos por grupo{{ sufixo }} (R$)</h2><div class="chart" style="height:340px"><canvas id="gEvoGrupo"></canvas></div></div>
+<div class="card"><h2>Categorias de gasto{{ sufixo }} (R$ e %) · {{ n_cat }}</h2><div class="scrollx"><div class="chart" style="height:420px" id="wCats"><canvas id="gCats"></canvas></div></div></div>
+<div class="card"><div class="cab-card"><h2>Evolução dos gastos por categoria{{ sufixo }} (R$)</h2>
+  <div class="campo mini"><span>Categoria</span>{% include "erp/_multi.html" with nome="cat" opcoes=cat_op sel=cats_sel todos="Todas" form="ff" %}</div></div>
+  <div class="chart" style="height:380px"><canvas id="gEvoCat"></canvas></div></div>
+
+<div class="grid g2x">
+  <div class="card"><h2>Clientes (maiores entradas){{ sufixo }} · {{ n_cli }}</h2><div class="scrolly"><div class="chart" id="wCli"><canvas id="gCli"></canvas></div></div></div>
+  <div class="card"><h2>Fornecedores (maiores gastos){{ sufixo }} · {{ n_forn }}</h2><div class="scrolly"><div class="chart" id="wForn"><canvas id="gForn"></canvas></div></div></div>
+</div>
+
+<div class="card"><h2>Situação das contas</h2><div class="tabela" style="max-height:50vh"><table><tr><th>Situação</th><th class="n">Quantidade</th><th class="n">A receber</th><th class="n">A pagar</th></tr>
+  {% for s, q, rec, pag in situacoes %}<tr><td>{{ s }}</td><td class="n">{{ q }}</td><td class="n">{{ rec|brl }}</td><td class="n neg">{{ pag|brl }}</td></tr>{% endfor %}</table></div></div>
+
+<div class="card" id="lancamentos"><div class="cab-card"><h2>Lançamentos{{ sufixo }}{% if l_tipo != 'todos' %} · {{ l_tipo|capfirst }}{% endif %} · {{ n_lanc }}</h2>
+  <div class="filtros barra">
+    <label>Tipo<select name="tipo" form="ff" class="auto"><option value="todos">Todos</option><option value="entradas" {% if l_tipo == 'entradas' %}selected{% endif %}>Entradas</option><option value="gastos" {% if l_tipo == 'gastos' %}selected{% endif %}>Gastos</option></select></label>
+    <div class="campo"><span>Categoria</span>{% include "erp/_multi.html" with nome="lcat" opcoes=l_cat_op sel=l_cats todos="Todas" form="ff" %}</div>
+    <label>Buscar<input name="q" form="ff" value="{{ busca }}" placeholder="Fornecedor ou categoria" style="width:220px"></label>
+    <details class="multi baixar"><summary>Baixar</summary><div class="pop">
+      <a class="btn sec" href="?{{ request.GET.urlencode }}&baixar=xlsx">Excel (.xlsx)</a>
+      <a class="btn sec" target="_blank" href="?{{ request.GET.urlencode }}&baixar=pdf">PDF</a></div></details>
+  </div></div>
+  <div class="tabela" style="max-height:60vh"><table><tr>{% for c in lanc_cab %}<th class="{% if c.num %}n{% endif %}"><a class="ord" href="{{ c.url }}#lancamentos">{{ c.t }} {{ c.seta }}</a></th>{% endfor %}</tr>
+  {% for r in lancamentos %}<tr><td>{{ r.data_emissao|date:"d/m/Y" }}</td><td>{{ r.data_pagamento|date:"d/m/Y"|default:"—" }}</td><td>{{ r.fornecedor }}</td><td>{{ r.categoria }}</td><td>{{ r.grupo }}</td><td>{{ r.situacao }}</td><td>{{ r.tipo }}</td>
+    <td class="n {% if r.valor_conta < 0 %}neg{% endif %}">{{ r.valor_conta|brl }}</td><td class="n {% if r.valor_pago < 0 %}neg{% endif %}">{{ r.valor_pago|brl }}</td></tr>
+  {% empty %}<tr><td colspan="9" class="vazio">Nenhum lançamento</td></tr>{% endfor %}</table></div>
+  <div class="paginas"><span>Página {{ pag }} de {{ paginas }} · {{ n_lanc }} lançamentos</span>
+    {% if pag > 1 %}<a class="btn sec" href="?{{ qs_pag }}&p={{ pag|add:-1 }}#lancamentos">Anterior</a>{% else %}<span class="btn sec off">Anterior</span>{% endif %}
+    {% if pag < paginas %}<a class="btn sec" href="?{{ qs_pag }}&p={{ pag|add:1 }}#lancamentos">Próxima</a>{% else %}<span class="btn sec off">Próxima</span>{% endif %}</div>
+</div>
 {% endblock %}
-{% block scripts %}<script>
-const G = {{ graf|safe }};
-barras("gSerie", G.serie.labels, [{nome:"Entradas", valores:G.serie.entradas, cor:"#0f7a3d"}, {nome:"Gastos", valores:G.serie.gastos, cor:"#c62828"},
-  {nome:"Saldo acumulado", valores:G.serie.acumulado, tipo:"line", eixo:"y2", cor:"#2f80ed"}], {moeda:true, y2:true});
-rosca("gGastos", G.gastos.labels, G.gastos.valores, {moeda:true});
-</script>{% endblock %}
+{% block scripts %}<script>const G = {{ graf|safe }};</script><script src="{% static 'js/fluxo.js' %}"></script>{% endblock %}

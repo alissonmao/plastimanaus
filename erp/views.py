@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import Max, Min
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 
 from . import calculos as C
 from . import planilhas as P
@@ -317,50 +318,173 @@ def vendas_plasti(request):
 
 
 # ===================================================================== Fluxo de caixa
+LANC_COLS = [("data_emissao", "Emissão"), ("data_pagamento", "Data pagto/receb."), ("fornecedor", "Cliente/Fornecedor"),
+             ("categoria", "Categoria"), ("grupo", "Grupo"), ("situacao", "Situação"), ("tipo", "Tipo"),
+             ("valor_conta", "Valor da conta"), ("valor_pago", "Pago/Recebido")]
+LANC_POR_PAGINA = 50
+
+
+def _somar_meses(mes, n):
+    a, m = divmod(int(mes[:4]) * 12 + int(mes[5:7]) - 1 + n, 12)
+    return f"{a}-{m + 1:02d}"
+
+
+def _limites_mes(mes):
+    import calendar
+    a, m = int(mes[:4]), int(mes[5:7])
+    return date(a, m, 1), date(a, m, calendar.monthrange(a, m)[1])
+
+
+def _periodo_fluxo(request, meses):
+    """Atalhos do Lovable: todo período, um mês, últimos 3/6 meses, ano atual ou datas livres. Vazio = todo período."""
+    at = request.GET.get("at", "")
+    ult = meses[-1] if meses else date.today().strftime("%Y-%m")
+    if at.startswith("m:") and len(at) == 9:
+        return (*_limites_mes(at[2:]), at)
+    if at in ("u3", "u6"):
+        return _limites_mes(_somar_meses(ult, -2 if at == "u3" else -5))[0], _limites_mes(ult)[1], at
+    if at == "ano":
+        y = date.today().year
+        return date(y, 1, 1), date(y, 12, 31), at
+    if at == "todos":
+        return None, None, at
+    de, ate = _data(request.GET.get("de"), None), _data(request.GET.get("ate"), None)
+    if de and ate and de > ate:
+        de, ate = ate, de
+    if de and de < C.DATA_MINIMA_FLUXO:
+        de = C.DATA_MINIMA_FLUXO
+    return de, ate, ("custom" if de or ate else "todos")
+
+
+def _rot_periodo(de, ate):
+    if not (de or ate):
+        return ""
+    if de and ate and de.day == 1 and _limites_mes(de.strftime("%Y-%m"))[1] == ate:
+        return C.rotulo_mes(de.strftime("%Y-%m"))
+    return f"{de.strftime('%d/%m/%y') if de else 'início'} a {ate.strftime('%d/%m/%y') if ate else 'fim'}"
+
+
 def fluxo_caixa(request):
-    de, ate = periodo(request, FluxoCaixa, "data_emissao")
-    de = max(de, C.DATA_MINIMA_FLUXO)
+    from . import fluxo_visao as V
     todos = [r for r in FluxoCaixa.objects.all() if C.data_ref(r) >= C.DATA_MINIMA_FLUXO]
-    grupos_sel, contas_sel = lista_get(request, "grupo"), lista_get(request, "conta")
-    situacao = request.GET.get("situacao", "todos")
-    rows = []
-    for r in todos:
+    meses = sorted({C.data_ref(r).strftime("%Y-%m") for r in todos})
+    de, ate, atalho = _periodo_fluxo(request, meses)
+    grupos_sel, contas_sel, status_sel = lista_get(request, "grupo"), lista_get(request, "conta"), lista_get(request, "st")
+    todas_sit = sorted({r.situacao for r in todos})
+
+    def base(r, com_periodo=True, com_status=True):
         d = C.data_ref(r)
-        if not (de <= d <= ate):
-            continue
-        if grupos_sel and r.grupo not in grupos_sel:
-            continue
-        if contas_sel and (r.conta_corrente or "") not in contas_sel:
-            continue
-        if situacao == "realizado" and not C.is_realizado(r.situacao):
-            continue
-        if situacao == "aberto" and C.is_realizado(r.situacao):
-            continue
-        rows.append(r)
+        return not ((com_periodo and ((de and d < de) or (ate and d > ate)))
+                    or (grupos_sel and r.grupo not in grupos_sel)
+                    or (contas_sel and (r.conta_corrente or "") not in contas_sel)
+                    or (com_status and status_sel and r.situacao not in status_sel))
+    rows = [r for r in todos if base(r)]
     if request.GET.get("exportar"):
         campos = [f.name for f in FluxoCaixa._meta.fields if f.name not in ("id", "created_at")]
         return P.xlsx_response([{c: getattr(r, c) for c in campos} for r in rows], "fluxo-caixa")
+
+    # ---- Lançamentos (tabela com filtros próprios)
+    l_tipo, l_cats, busca = request.GET.get("tipo", "todos"), lista_get(request, "lcat"), request.GET.get("q", "").strip()
+    ordem = request.GET.get("ord", "data_emissao")
+    ordem = ordem if ordem in dict(LANC_COLS) else "data_emissao"
+    asc = request.GET.get("asc") == "1"
+    tabela = [r for r in rows if (not l_cats or r.categoria in l_cats)
+              and (l_tipo == "todos" or (l_tipo == "entradas" and C.f(r.valor_conta) > 0) or (l_tipo == "gastos" and C.f(r.valor_conta) < 0))
+              and (not busca or busca.lower() in (r.fornecedor or "").lower() or busca.lower() in (r.categoria or "").lower())]
+    def chave_ord(r):
+        v = getattr(r, ordem)
+        if ordem.startswith("valor"):
+            return (1, C.f(v))
+        return (0, "") if v in (None, "") else (1, C.sem_acento(v) if isinstance(v, str) else v)
+    tabela.sort(key=chave_ord, reverse=not asc)
+    filtros_txt = dict(periodo=_rot_periodo(de, ate) or "Todo período", status=", ".join(status_sel) or "Todos",
+                       conta=", ".join(contas_sel) or "Todas", grupo=", ".join(grupos_sel) or "Todos",
+                       categoria=", ".join(l_cats) or "Todas", busca=busca,
+                       tipo={"entradas": "Entradas", "gastos": "Gastos"}.get(l_tipo, "Todos"))
+    baixar = request.GET.get("baixar")
+    if baixar == "xlsx":
+        return P.xlsx_response([{t: (C.f(getattr(r, k)) if k.startswith("valor") else getattr(r, k)) for k, t in LANC_COLS} for r in tabela],
+                               "lancamentos")
+    if baixar == "pdf":
+        return render(request, "erp/fluxo_lancamentos_pdf.html", dict(
+            colunas=LANC_COLS, linhas=tabela, filtros=filtros_txt, total_conta=sum(C.f(r.valor_conta) for r in tabela),
+            total_pago=sum(C.f(r.valor_pago) for r in tabela), gerado=timezone.localtime()))
+    paginas = max(1, -(-len(tabela) // LANC_POR_PAGINA))
+    try:
+        pag = min(max(int(request.GET.get("p", "1")), 1), paginas)
+    except ValueError:
+        pag = 1
+
+    # ---- Gráficos
     g = request.GET.get("g", "mes")
-    kpis = C.kpis_fluxo(rows)
-    gastos_grupo = C.ranking_fluxo(rows, lambda r: r.grupo, -1)
-    entradas_cat = C.ranking_fluxo(rows, lambda r: r.categoria, 1)
-    gastos_forn = C.ranking_fluxo(rows, lambda r: r.fornecedor, -1)[:15]
-    situacoes = defaultdict(lambda: [0, 0.0, 0.0])
-    for r in rows:
-        s = situacoes[r.situacao]
-        s[0] += 1
-        if C.f(r.valor_conta) > 0:
-            s[1] += C.f(r.valor_conta)
-        else:
-            s[2] += -C.f(r.valor_conta)
-    ctx = dict(titulo="Entradas e Saídas base Omie", de=de, ate=ate, g=g, granularidades=GRANULARIDADES, kpis=kpis,
-               gastos_grupo=gastos_grupo, entradas_cat=entradas_cat[:15], gastos_forn=gastos_forn,
-               situacoes=sorted(situacoes.items(), key=lambda x: -x[1][0]), situacao=situacao,
-               grupos_sel=grupos_sel, contas_sel=contas_sel,
-               op_grupos=sorted({r.grupo for r in todos}), op_contas=sorted({r.conta_corrente for r in todos if r.conta_corrente}),
-               lancamentos=sorted(rows, key=C.data_ref, reverse=True)[:200],
-               graf=js(dict(serie=C.serie_fluxo(rows, g),
-                            gastos=dict(labels=[x["nome"] for x in gastos_grupo], valores=[round(x["valor"], 2) for x in gastos_grupo]))))
+    g = g if g in dict(GRANULARIDADES) else "mes"
+    meses_rows = sorted({C.data_ref(r).strftime("%Y-%m") for r in rows})
+    mes = request.GET.get("mes")
+    mes = mes if mes in meses_rows else (meses_rows[-1] if meses_rows else "")
+    datas = sorted(C.data_ref(r) for r in rows)
+    per = None
+    if (de or ate) and datas:
+        modo, pontos = V.serie_periodo(rows, de or datas[0], ate or datas[-1])
+        per = dict(modo=modo, rotulo=_rot_periodo(de or datas[0], ate or datas[-1]))
+    else:
+        modo = "dia" if g == "dia" else "mes"
+        pontos = V.serie_granularidade(rows, g, mes if g == "dia" else None)
+    g_evo = (per["modo"] if per else g)
+    rot_g = {"dia": "dia", "semana": "semana", "trimestre": "trimestre", "ano": "ano"}.get(g, "mês")
+    if per:
+        t_serie = f"Entradas x Gastos por {'dia' if per['modo'] == 'dia' else 'mês'} — {per['rotulo']} (R$)"
+    elif g == "dia":
+        t_serie = f"Entradas x Gastos por dia — {C.rotulo_mes(mes) if mes else ''} (R$)"
+    else:
+        t_serie = f"Entradas x Gastos por {rot_g} (R$)"
+    if per:
+        saldo = [dict(chave=p["chave"], label=p["label"], v=p["saldoAcum"]) for p in pontos]
+    else:
+        saldo = [dict(chave=p["chave"], label=p["label"], v=p["saldoAcum"]) for p in V.serie_granularidade(rows, g)]
+    modo_ab = request.GET.get("ab", "receber")
+    modo_ab = modo_ab if modo_ab in ("receber", "pagar", "ambos") else "receber"
+    rows_aberto = [r for r in todos if base(r, com_periodo=False, com_status=False)]
+    aberto = V.aberto_por_data(rows_aberto, modo_ab, status_sel or None, de, ate)
+    gastos_grupo = V.ranking(rows, lambda r: r.grupo, -1)
+    for x in gastos_grupo:
+        x["cor"] = V.cor_grupo(x["nome"])
+    cat_op = sorted({r.categoria for r in rows if C.f(r.valor_pago) < 0}, key=C.sem_acento)
+    cats_sel = [c for c in lista_get(request, "cat") if c in cat_op]
+    rows_cat = [r for r in rows if r.categoria in cats_sel] if cats_sel else rows
+    evo_grupo = V.gastos_por_periodo(rows, lambda r: r.grupo, 6, g_evo)
+    evo_cat = V.gastos_por_periodo(rows_cat, lambda r: r.categoria, 10, g_evo)
+    top_cat = V.ranking(rows, lambda r: r.categoria, -1)
+    top_cli = V.ranking(rows, lambda r: r.fornecedor, 1)
+    top_forn = V.ranking(rows, lambda r: r.fornecedor, -1)
+    sit_tipo = V.por_situacao_tipo(rows)
+    sufixo = f" — {per['rotulo']}" if per else ""
+    qs = request.GET.copy()
+    for k in ("ord", "asc", "p", "baixar", "exportar"):
+        qs.pop(k, None)
+    qs_base = qs.urlencode()
+    cab = [dict(k=k, t=t, num=k.startswith("valor"), seta=("▲" if asc else "▼") if k == ordem else "",
+                url=f"?{qs_base}&ord={k}&asc={'0' if (k == ordem and asc) else '1'}") for k, t in LANC_COLS]
+    qs_pag = f"{qs_base}&ord={ordem}&asc={'1' if asc else '0'}"
+
+    ctx = dict(titulo="Entradas e Saídas base Omie", kpis=C.kpis_fluxo(rows), de=de, ate=ate, atalho=atalho, meses=meses,
+               rot_meses=[(m, C.rotulo_mes(m)) for m in meses], g=g, granularidades=GRANULARIDADES,
+               mes=mes, rot_meses_rows=[(m, C.rotulo_mes(m)) for m in meses_rows], mostrar_mes=(not per and g == "dia"),
+               grupos_sel=grupos_sel, contas_sel=contas_sel, status_sel=status_sel,
+               op_grupos=sorted({r.grupo for r in todos}, key=C.sem_acento),
+               op_contas=sorted({r.conta_corrente for r in todos if r.conta_corrente}, key=C.sem_acento),
+               op_status=[(s, V.cor_situacao(s)) for s in todas_sit],
+               st_realizados=V.realizadas(todas_sit), st_aberto=V.em_aberto(todas_sit),
+               t_serie=t_serie, sufixo=sufixo, modo_ab=modo_ab, aberto=aberto, cat_op=cat_op, cats_sel=cats_sel,
+               n_cat=len(top_cat), n_cli=len(top_cli), n_forn=len(top_forn), sit_tipo=sit_tipo, sit_pares=[("Rec", "Contas a Receber por situação", sit_tipo["receber"]), ("Pag", "Contas a Pagar por situação", sit_tipo["pagar"])],
+               situacoes=V.por_situacao(rows),
+               lanc_cab=cab, qs_pag=qs_pag, lancamentos=tabela[(pag - 1) * LANC_POR_PAGINA: pag * LANC_POR_PAGINA], n_lanc=len(tabela),
+               pag=pag, paginas=paginas, ordem=ordem, asc=asc, l_tipo=l_tipo, l_cats=l_cats, busca=busca,
+               l_cat_op=sorted({r.categoria for r in rows}, key=C.sem_acento),
+               graf=js(dict(modo=modo, serie=pontos, saldo=saldo, saldoDia=bool(per and per["modo"] == "dia"),
+                            gastosGrupo=gastos_grupo, entradas=V.entradas_grupo_categoria(rows), evoGrupo=evo_grupo,
+                            corGrupo={s: V.cor_grupo(s) for s in evo_grupo["series"]}, evoCat=evo_cat, gEvo=g_evo,
+                            cats=top_cat, cli=top_cli, forn=top_forn, sitTipo=sit_tipo, aberto=aberto, modoAb=modo_ab,
+                            cat=V.CAT, cinza=V.CINZA)))
     return render(request, "erp/fluxo_caixa.html", ctx)
 
 

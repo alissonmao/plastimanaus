@@ -1,0 +1,14 @@
+{% load fmt %}<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><title>Lançamentos — Entradas e Saídas base Omie</title>
+<style>@page{size:A4 landscape;margin:10mm}body{font:10px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d1b18;margin:0}
+h1{font-size:15px;margin:0 0 4px}.f{color:#555;margin:0 0 8px;line-height:1.5}table{border-collapse:collapse;width:100%}
+th,td{border-bottom:1px solid #ddd;padding:3px 4px;text-align:left;vertical-align:top}th{background:#f3f3f3}.n{text-align:right;white-space:nowrap}.neg{color:#c62828}
+tfoot td{font-weight:700;border-top:2px solid #999}.bar{margin:10px 0}@media print{.bar{display:none}}</style></head>
+<body><div class="bar"><button onclick="print()">Salvar como PDF / Imprimir</button></div>
+<h1>Lançamentos — Entradas e Saídas base Omie</h1>
+<p class="f">Período: {{ filtros.periodo }} · Tipo: {{ filtros.tipo }} · Status: {{ filtros.status }} · Conta: {{ filtros.conta }} · Grupo: {{ filtros.grupo }} · Categoria: {{ filtros.categoria }}{% if filtros.busca %} · Busca: “{{ filtros.busca }}”{% endif %}<br>
+{{ linhas|length }} lançamentos · gerado em {{ gerado|date:"d/m/Y H:i" }}</p>
+<table><thead><tr>{% for k, t in colunas %}<th {% if k == 'valor_conta' or k == 'valor_pago' %}class="n"{% endif %}>{{ t }}</th>{% endfor %}</tr></thead><tbody>
+{% for r in linhas %}<tr><td>{{ r.data_emissao|date:"d/m/Y" }}</td><td>{{ r.data_pagamento|date:"d/m/Y"|default:"—" }}</td><td>{{ r.fornecedor }}</td><td>{{ r.categoria }}</td><td>{{ r.grupo }}</td><td>{{ r.situacao }}</td><td>{{ r.tipo }}</td>
+<td class="n {% if r.valor_conta < 0 %}neg{% endif %}">{{ r.valor_conta|brl }}</td><td class="n {% if r.valor_pago < 0 %}neg{% endif %}">{{ r.valor_pago|brl }}</td></tr>{% endfor %}</tbody>
+<tfoot><tr><td colspan="7">Total</td><td class="n">{{ total_conta|brl }}</td><td class="n">{{ total_pago|brl }}</td></tr></tfoot></table>
+<script>addEventListener("load", () => setTimeout(() => print(), 300));</script></body></html>

@@ -1,0 +1,5 @@
+<details class="multi"><summary>{% if sel %}{{ sel|length }} selecionado{{ sel|length|pluralize }}{% else %}{{ todos }}{% endif %}</summary><div class="pop">
+  <div class="atalhos"><button type="button" data-todos>Todos</button></div>
+  <input type="search" class="filtra" placeholder="Procurar…">
+  <div class="lista">{% for o in opcoes %}<label><input type="checkbox" name="{{ nome }}" value="{{ o }}" {% if form %}form="{{ form }}"{% endif %} {% if o in sel %}checked{% endif %}>{{ o }}</label>{% endfor %}</div>
+  <button class="btn" {% if form %}form="{{ form }}"{% endif %}>Aplicar</button></div></details>

@@ -167,3 +167,26 @@ b.ok{color:var(--ok)}.chk{display:flex!important;flex-direction:row!important;ga
 .pk em.vermelho{color:var(--danger);font-style:normal;font-size:12px}
 [hidden]{display:none!important}
 .aud-sens td{background:#fff6f3}
+/* Entradas e Saídas base Omie (visão igual ao Lovable) */
+.fx{position:relative;z-index:5}.campo{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+.multi{position:relative}.multi summary{list-style:none;cursor:pointer;border:1px solid var(--border);border-radius:8px;padding:7px 28px 7px 10px;background:var(--card);color:var(--fg);font-size:13px;min-width:120px;white-space:nowrap;position:relative}
+.multi summary::-webkit-details-marker{display:none}.multi summary:after{content:"⌄";position:absolute;right:10px;top:4px;color:var(--muted)}
+.multi .pop{position:absolute;z-index:30;top:calc(100% + 4px);left:0;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:8px;width:300px;display:flex;flex-direction:column;gap:6px}
+.cab-card .multi .pop,.multi.baixar .pop{left:auto;right:0}.multi.baixar .pop{width:auto}
+.multi .atalhos{display:flex;flex-wrap:wrap;gap:4px}.multi .atalhos button{border:1px solid var(--border);background:var(--primary-2);border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer}
+.multi .lista{max-height:260px;overflow:auto;display:flex;flex-direction:column}.multi .lista label{display:flex!important;flex-direction:row!important;align-items:center;gap:6px;font-size:12.5px;color:var(--fg);padding:3px 4px;border-radius:5px;cursor:pointer}
+.multi .lista label:hover{background:var(--primary-2)}.multi .lista i{width:10px;height:10px;border-radius:50%;flex:none}.multi .filtra{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12.5px}
+.cab-card{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:6px}.cab-card h2{margin:0}
+.cab-card .sub{margin:2px 0 0;color:var(--muted);font-size:12.5px}.mini{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+.filtros.barra{gap:8px}.g2x{grid-template-columns:repeat(auto-fit,minmax(520px,1fr))}.grid.duas{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.card h3{font-size:13.5px;margin:4px 0;text-align:center;font-weight:600}
+.leg{list-style:none;margin:6px 0 0;padding:0;font-size:12.5px}.leg li{display:grid;grid-template-columns:12px 1fr auto 52px;gap:6px;align-items:center;padding:2px 0}
+.leg i{width:10px;height:10px;border-radius:50%}.leg b{font-weight:600;white-space:nowrap}.leg small{color:var(--muted);text-align:right}.leg li.tot{border-top:1px solid var(--border);margin-top:3px;padding-top:4px;grid-template-columns:12px 1fr auto 52px}
+.leg li.tot span{grid-column:2}.leg li.sub{padding-left:18px;color:var(--muted)}
+.sunburst{display:grid;grid-template-columns:minmax(300px,1fr) minmax(280px,420px);gap:16px;align-items:start}@media(max-width:900px){.sunburst{grid-template-columns:1fr}}
+.scrollx{overflow-x:auto;overflow-y:hidden}.scrolly{max-height:420px;overflow-y:auto}.nota{font-size:13px;margin:8px 0 0}
+.kpi em{display:block;font-style:normal;color:var(--muted);font-size:12px}.kpi[title]{cursor:help}.kpi .ok{color:var(--ok)}
+.paginas{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--muted)}.btn.off{opacity:.45;pointer-events:none}
+a.ord{color:inherit;text-decoration:none;white-space:nowrap}a.ord:hover{text-decoration:underline}
+.kpis.k4{grid-template-columns:repeat(4,minmax(0,1fr))}.kpis.k4 b{white-space:nowrap;font-size:24px}@media(max-width:900px){.kpis.k4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cab-card .filtros{flex:1 1 520px;justify-content:flex-end;margin:0;padding:0;border:0;background:none}.cab-card .filtros label,.cab-card .filtros .campo{flex:none}
