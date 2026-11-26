@@ -4,6 +4,7 @@
 <link rel="icon" href="{% static 'img/logo.png' %}"><link rel="stylesheet" href="{% static 'css/erp.css' %}">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="{% static 'js/graficos.js' %}"></script>
+{% block head %}{% endblock %}
 {% if tem_secretaria %}<script src="{% static 'js/voz.js' %}"></script>{% endif %}
 </head><body><div class="app">
 <nav class="side">
@@ -15,7 +16,7 @@
   </details>{% endif %}{% endfor %}
   <form method="post" action="{% url 'logout' %}">{% csrf_token %}<div class="user">{{ user.get_full_name|default:user.username }} · <button class="btn sec" style="padding:2px 8px">Sair</button></div></form>
 </nav>
-<main>
+<main class="{% block main_classe %}{% endblock %}">
   {% block titulo_pagina %}<h1>{{ titulo }}<form method="post" action="{% url 'favorito_alternar' %}" class="fav">{% csrf_token %}<input type="hidden" name="url" value="{{ request.path }}"><input type="hidden" name="titulo" value="{{ titulo }}"><button title="{% if favorito_atual %}Tirar da Rotina{% else %}Colocar na Rotina{% endif %}" class="{% if favorito_atual %}on{% endif %}">{% if favorito_atual %}★{% else %}☆{% endif %}</button></form></h1>{% endblock %}
   {% for m in messages %}<div class="msg {{ m.tags }}">{{ m }}</div>{% endfor %}
   {% block conteudo %}{% endblock %}

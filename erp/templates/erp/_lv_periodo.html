@@ -1,0 +1,13 @@
+<div class="lv-per" data-periodo data-min="{{ data_min|date:'Y-m-d' }}" data-max="{{ data_max|date:'Y-m-d' }}">
+  <select data-at aria-label="Período">
+    <option value="todos" {% if atalho == 'todos' %}selected{% endif %}>Todo período</option>
+    {% for m, r in rot_meses %}<option value="m:{{ m }}" {% if atalho == 'm:'|add:m %}selected{% endif %}>{{ r }}</option>{% endfor %}
+    <option value="u3" {% if atalho == 'u3' %}selected{% endif %}>Últimos 3 meses</option>
+    <option value="u6" {% if atalho == 'u6' %}selected{% endif %}>Últimos 6 meses</option>
+    <option value="ano" {% if atalho == 'ano' %}selected{% endif %}>Ano atual</option>
+    <option value="custom" {% if atalho == 'custom' %}selected{% endif %}>Personalizado…</option>
+  </select>
+  <label class="lv-datas">De<input type="date" data-de aria-label="Data inicial do período" value="{{ de|date:'Y-m-d' }}"></label>
+  <label class="lv-datas">Até<input type="date" data-ate aria-label="Data final do período" value="{{ ate|date:'Y-m-d' }}"></label>
+  {% if atalho != 'todos' %}<button type="button" class="lv-btn ghost" data-limpar-per>Limpar</button>{% endif %}
+</div>

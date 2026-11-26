@@ -11,8 +11,8 @@ VERDE, VERMELHO = "#00b050", "#dc2626"
 CORES_GASTO = [("pessoal", "#e11d48"), ("administrativ", "#f08c00"), ("diretas", "#13606e"), ("vendas", "#2f9e44"),
                ("marketing", "#2f9e44"), ("financeir", "#64748b"), ("banco", "#64748b"), ("imposto", "#7c3aed"),
                ("taxa", "#7c3aed"), ("investimento", "#0ea5e9"), ("outr", "#808000")]
-CAT = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac"]
-CINZA = "#7a8794"
+CAT = ["#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#17becf"]
+CINZA = "#54676e"
 
 
 def cor_grupo(nome):
@@ -180,10 +180,12 @@ def aberto_por_data(rows, modo, status=None, de=None, ate=None):
         qtd += 1
     chaves = sorted(dias)
     ser = sorted(series.values(), key=lambda s: (-s["sinal"], s["situacao"]))
-    detalhe = {d: {k: sorted(([n, round(v, 2), q] for n, (v, q) in m.items()), key=lambda x: -abs(x[1]))[:8]
-                   for k, m in det[d].items()} for d in chaves}
+    ordenado = {d: {k: sorted(([n, round(v, 2), q] for n, (v, q) in m.items()), key=lambda x: -abs(x[1]))
+                    for k, m in det[d].items()} for d in chaves}
+    detalhe = {d: {k: l[:8] for k, l in ks.items()} for d, ks in ordenado.items()}
+    outros = {d: {k: [len(l) - 8, round(sum(x[1] for x in l[8:]), 2)] for k, l in ks.items() if len(l) > 8} for d, ks in ordenado.items()}
     return dict(dias=chaves, series=[dict(s, valores=[round(dias[d].get(s["key"], 0), 2) for d in chaves]) for s in ser],
-                totais=[round(sum(dias[d].values()), 2) for d in chaves], total=round(total, 2), qtd=qtd, detalhe=detalhe)
+                totais=[round(sum(dias[d].values()), 2) for d in chaves], total=round(total, 2), qtd=qtd, detalhe=detalhe, outros=outros)
 
 
 def entradas_grupo_categoria(rows):
@@ -203,7 +205,7 @@ def entradas_grupo_categoria(rows):
         grupos.append(dict(nome=g, valor=round(v, 2), pct=v / total if total else 0, qtd=sum(c[1] for c in cats.values()),
                            categorias=sorted(({"nome": n, "valor": round(c[0], 2), "qtd": c[1], "pctTotal": c[0] / total if total else 0,
                                                "pctGrupo": c[0] / v if v else 0} for n, c in cats.items()), key=lambda x: -x["valor"])))
-    return dict(total=round(total, 2), grupos=sorted(grupos, key=lambda x: -x["valor"]))
+    return dict(total=round(total, 2), qtd=sum(g["qtd"] for g in grupos), grupos=sorted(grupos, key=lambda x: -x["valor"]))
 
 
 def em_aberto(todas):

@@ -1,0 +1,5 @@
+{% load fmt %}<details class="lv-pop {% if not barra %}dir{% endif %}" data-multi="{{ campo }}" {% if barra %}style="display:block"{% endif %}>
+  <summary class="lv-btn {% if barra %}lg w-full{% endif %}" aria-label="{{ label }}">{% if barra %}<span class="trunc">{% if sel %}{% if sel|length == 1 %}{{ sel.0 }}{% else %}{{ sel|length }} selecionados{% endif %}{% else %}Todos{% endif %}</span>{% else %}{{ label }}: {% if sel %}{{ sel|length }}{% else %}{{ todos_txt }}{% endif %}{% endif %}{% include "erp/_lv_chev.html" %}</summary>
+  <div class="lv-pop-c p0" style="width:288px"><input type="search" class="lv-busca" placeholder="Buscar..." data-filtra>
+    <div class="lv-cmd lv-thin"><div class="todos" data-limpa>Todos / Limpar</div>
+    {% for o in opcoes %}<label><input type="checkbox" value="{{ o }}" {% if o in sel %}checked{% endif %}>{{ o }}</label>{% endfor %}</div></div></details>

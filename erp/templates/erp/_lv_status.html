@@ -1,0 +1,9 @@
+{% if restrito %}<details class="lv-pop" data-status data-todas="{{ todas_sit }}" data-restringir="{{ st_ab_lista }}">
+  <summary class="lv-btn">{{ st_label_ab }}{% include "erp/_lv_chev.html" %}</summary>
+  <div class="lv-pop-c"><div class="lv-st-top"><button type="button" class="lv-btn sec" data-st-todos>Todos</button><button type="button" class="lv-btn ghost" data-st-limpar>Limpar</button></div>
+  <div class="lv-lista lv-thin">{% for s, cor in op_status_ab %}<label><input type="checkbox" value="{{ s }}" {% if not status_sel or s in status_sel %}checked{% endif %}><span class="lv-dot" style="background:{{ cor }}"></span>{{ s }}</label>{% endfor %}</div></div></details>
+{% else %}<details class="lv-pop {% if dir %}dir{% endif %}" data-status data-todas="{{ todas_sit }}">
+  <summary class="lv-btn">{% if compacto %}{{ st_label_c }}{% else %}{{ st_label }}{% endif %}{% include "erp/_lv_chev.html" %}</summary>
+  <div class="lv-pop-c"><div class="lv-st-top"><button type="button" class="lv-btn sec" data-st-todos>Todos</button><button type="button" class="lv-btn ghost" data-st-limpar>Limpar</button>
+    <button type="button" class="lv-btn ghost" data-st-lista="{{ st_realizados }}">Só realizados</button><button type="button" class="lv-btn ghost" data-st-lista="{{ st_aberto }}">Só em aberto</button></div>
+  <div class="lv-lista lv-thin">{% for s, cor in op_status %}<label><input type="checkbox" value="{{ s }}" {% if not status_sel or s in status_sel %}checked{% endif %}><span class="lv-dot" style="background:{{ cor }}"></span>{{ s }}</label>{% endfor %}</div></div></details>{% endif %}

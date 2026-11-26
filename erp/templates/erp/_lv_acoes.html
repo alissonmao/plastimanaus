@@ -1,0 +1,4 @@
+<div class="lv-acoes-card">{% include "erp/_lv_periodo_pop.html" %}{% include "erp/_lv_status.html" with compacto=1 dir=1 %}
+  {% include "erp/_lv_multi.html" with campo="conta" label="Conta" opcoes=op_contas sel=contas_sel todos_txt="Todas" %}
+  {% if com_categoria %}{% include "erp/_lv_multi.html" with campo="cat" label="Categoria" opcoes=cat_op sel=cats_sel todos_txt="Todas" %}
+  {% else %}{% include "erp/_lv_multi.html" with campo="grupo" label="Grupo" opcoes=op_grupos sel=grupos_sel todos_txt="Todos" %}{% endif %}</div>

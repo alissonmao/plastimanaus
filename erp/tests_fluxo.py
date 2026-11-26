@@ -78,7 +78,7 @@ class TelaTest(TestCase):
             r = self.client.get("/fluxo-caixa/" + qs)
             self.assertEqual(r.status_code, 200, qs)
         r = self.client.get("/fluxo-caixa/?tipo=gastos")
-        self.assertContains(r, "Lançamentos · Gastos · 2")
+        self.assertContains(r, "Lançamentos — Gastos · 2")
 
     def test_baixar(self):
         r = self.client.get("/fluxo-caixa/?baixar=xlsx")

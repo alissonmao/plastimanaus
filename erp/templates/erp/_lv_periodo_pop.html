@@ -1,0 +1,3 @@
+<details class="lv-pop {% if not grande %}dir{% endif %}"><summary class="lv-btn {% if grande %}lg{% endif %}" {% if grande %}style="min-width:208px;justify-content:space-between"{% endif %} aria-label="Período">
+  <span class="trunc">Período: {{ rot_per_btn }}</span>{% include "erp/_lv_chev.html" %}</summary>
+  <div class="lv-pop-c auto"><div style="display:flex;flex-direction:column;gap:8px">{% include "erp/_lv_periodo.html" %}</div></div></details>

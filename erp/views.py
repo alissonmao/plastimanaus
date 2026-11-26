@@ -335,6 +335,25 @@ def _limites_mes(mes):
     return date(a, m, 1), date(a, m, calendar.monthrange(a, m)[1])
 
 
+def _atalho_das_datas(de, ate, meses):
+    """Como o Lovable: reconhece um mês inteiro, os últimos 3/6 meses ou o ano atual a partir das datas escolhidas."""
+    if not (de and ate):
+        return "custom"
+    m = de.strftime("%Y-%m")
+    if de.day == 1 and _limites_mes(m)[1] == ate and m in meses:
+        return f"m:{m}"
+    ult = meses[-1] if meses else date.today().strftime("%Y-%m")
+    fim = _limites_mes(ult)[1]
+    if ate == fim and de == _limites_mes(_somar_meses(ult, -2))[0]:
+        return "u3"
+    if ate == fim and de == _limites_mes(_somar_meses(ult, -5))[0]:
+        return "u6"
+    y = date.today().year
+    if de == date(y, 1, 1) and ate == date(y, 12, 31):
+        return "ano"
+    return "custom"
+
+
 def _periodo_fluxo(request, meses):
     """Atalhos do Lovable: todo período, um mês, últimos 3/6 meses, ano atual ou datas livres. Vazio = todo período."""
     at = request.GET.get("at", "")
@@ -353,15 +372,30 @@ def _periodo_fluxo(request, meses):
         de, ate = ate, de
     if de and de < C.DATA_MINIMA_FLUXO:
         de = C.DATA_MINIMA_FLUXO
-    return de, ate, ("custom" if de or ate else "todos")
+    if not (de or ate):
+        return None, None, "todos"
+    return de, ate, _atalho_das_datas(de, ate, meses)
 
 
 def _rot_periodo(de, ate):
+    """Rótulo do período como no Lovable: "out/26" para um mês inteiro, senão "01/11/26 a 17/11/26"."""
     if not (de or ate):
         return ""
     if de and ate and de.day == 1 and _limites_mes(de.strftime("%Y-%m"))[1] == ate:
         return C.rotulo_mes(de.strftime("%Y-%m"))
     return f"{de.strftime('%d/%m/%y') if de else 'início'} a {ate.strftime('%d/%m/%y') if ate else 'fim'}"
+
+
+def _milhar(n):
+    return f"{n:,}".replace(",", ".")
+
+
+def _rotulo_status(sel, opcoes, compacto):
+    """Texto do botão de Status do Lovable: "Status: Todos", "Status: 3" ou "Status: 3 selecionados"."""
+    c = len([s for s in opcoes if not sel or s in sel])
+    if c == len(opcoes):
+        return "Status: Todos"
+    return f"Status: {c}" if compacto else f"Status: {c} selecionado{'' if c == 1 else 's'}"
 
 
 def fluxo_caixa(request):
@@ -370,7 +404,7 @@ def fluxo_caixa(request):
     meses = sorted({C.data_ref(r).strftime("%Y-%m") for r in todos})
     de, ate, atalho = _periodo_fluxo(request, meses)
     grupos_sel, contas_sel, status_sel = lista_get(request, "grupo"), lista_get(request, "conta"), lista_get(request, "st")
-    todas_sit = sorted({r.situacao for r in todos})
+    todas_sit = sorted({r.situacao for r in todos}, key=C.sem_acento)
 
     def base(r, com_periodo=True, com_status=True):
         d = C.data_ref(r)
@@ -383,8 +417,14 @@ def fluxo_caixa(request):
         campos = [f.name for f in FluxoCaixa._meta.fields if f.name not in ("id", "created_at")]
         return P.xlsx_response([{c: getattr(r, c) for c in campos} for r in rows], "fluxo-caixa")
 
-    # ---- Lançamentos (tabela com filtros próprios)
-    l_tipo, l_cats, busca = request.GET.get("tipo", "todos"), lista_get(request, "lcat"), request.GET.get("q", "").strip()
+    # Categoria: um filtro só, como no Lovable (vale para "Evolução por categoria" e para "Lançamentos"); "lcat" é o nome antigo.
+    cats_get = lista_get(request, "cat") + [c for c in lista_get(request, "lcat") if c not in lista_get(request, "cat")]
+
+    # ---- Lançamentos (tabela)
+    l_tipo, busca = request.GET.get("tipo", "todos"), request.GET.get("q", "").strip()
+    l_tipo = l_tipo if l_tipo in ("todos", "entradas", "gastos") else "todos"
+    l_cat_op = sorted({r.categoria for r in rows}, key=C.sem_acento)
+    l_cats = [c for c in cats_get if c in l_cat_op]
     ordem = request.GET.get("ord", "data_emissao")
     ordem = ordem if ordem in dict(LANC_COLS) else "data_emissao"
     asc = request.GET.get("asc") == "1"
@@ -429,7 +469,7 @@ def fluxo_caixa(request):
     else:
         modo = "dia" if g == "dia" else "mes"
         pontos = V.serie_granularidade(rows, g, mes if g == "dia" else None)
-    g_evo = (per["modo"] if per else g)
+    g_evo = (per["modo"] if per else ("dia" if g == "dia" else g))
     rot_g = {"dia": "dia", "semana": "semana", "trimestre": "trimestre", "ano": "ano"}.get(g, "mês")
     if per:
         t_serie = f"Entradas x Gastos por {'dia' if per['modo'] == 'dia' else 'mês'} — {per['rotulo']} (R$)"
@@ -449,15 +489,22 @@ def fluxo_caixa(request):
     for x in gastos_grupo:
         x["cor"] = V.cor_grupo(x["nome"])
     cat_op = sorted({r.categoria for r in rows if C.f(r.valor_pago) < 0}, key=C.sem_acento)
-    cats_sel = [c for c in lista_get(request, "cat") if c in cat_op]
+    cats_sel = [c for c in cats_get if c in cat_op]
     rows_cat = [r for r in rows if r.categoria in cats_sel] if cats_sel else rows
     evo_grupo = V.gastos_por_periodo(rows, lambda r: r.grupo, 6, g_evo)
     evo_cat = V.gastos_por_periodo(rows_cat, lambda r: r.categoria, 10, g_evo)
     top_cat = V.ranking(rows, lambda r: r.categoria, -1)
     top_cli = V.ranking(rows, lambda r: r.fornecedor, 1)
     top_forn = V.ranking(rows, lambda r: r.fornecedor, -1)
-    sit_tipo = V.por_situacao_tipo(rows)
-    sufixo = f" — {per['rotulo']}" if per else ""
+    rows_sit = [r for r in rows if not per or (de or datas[0]) <= C.data_ref(r) <= (ate or datas[-1])]
+    sit_tipo = V.por_situacao_tipo(rows_sit)
+
+    def titulo(nome, sufixo, extra=""):
+        r = f"{nome} — {extra}" if extra else nome
+        return f"{r} — {per['rotulo']} {sufixo}".strip() if per else f"{r} {sufixo}".strip()
+
+    st_aberto_op = [s for s in todas_sit if (s or "").strip() not in ("Pago", "Recebido")]
+    tipo_txt = {"entradas": "Entradas", "gastos": "Gastos"}.get(l_tipo, "")
     qs = request.GET.copy()
     for k in ("ord", "asc", "p", "baixar", "exportar"):
         qs.pop(k, None)
@@ -465,21 +512,37 @@ def fluxo_caixa(request):
     cab = [dict(k=k, t=t, num=k.startswith("valor"), seta=("▲" if asc else "▼") if k == ordem else "",
                 url=f"?{qs_base}&ord={k}&asc={'0' if (k == ordem and asc) else '1'}") for k, t in LANC_COLS]
     qs_pag = f"{qs_base}&ord={ordem}&asc={'1' if asc else '0'}"
+    kpis = C.kpis_fluxo(rows)
+    tom = lambda v: "" if v is None or v == 0 else ("danger" if v < 0 else "positive")
 
-    ctx = dict(titulo="Entradas e Saídas base Omie", kpis=C.kpis_fluxo(rows), de=de, ate=ate, atalho=atalho, meses=meses,
+    ctx = dict(titulo="Entradas e Saídas base Omie", kpis=kpis, tom_saldo=tom(kpis["saldo"]), tom_margem=tom(kpis["margem"]),
+               de=de, ate=ate, atalho=atalho, meses=meses, n_total=len(todos), n_filtrados=len(rows),
                rot_meses=[(m, C.rotulo_mes(m)) for m in meses], g=g, granularidades=GRANULARIDADES,
+               rot_per_btn="Todo" if atalho == "todos" else (_rot_periodo(de, ate) or "Personalizado"),
+               data_min=(datas[0] if datas else (C.data_ref(todos[0]) if todos else None)), data_max=(datas[-1] if datas else None),
                mes=mes, rot_meses_rows=[(m, C.rotulo_mes(m)) for m in meses_rows], mostrar_mes=(not per and g == "dia"),
                grupos_sel=grupos_sel, contas_sel=contas_sel, status_sel=status_sel,
                op_grupos=sorted({r.grupo for r in todos}, key=C.sem_acento),
                op_contas=sorted({r.conta_corrente for r in todos if r.conta_corrente}, key=C.sem_acento),
-               op_status=[(s, V.cor_situacao(s)) for s in todas_sit],
-               st_realizados=V.realizadas(todas_sit), st_aberto=V.em_aberto(todas_sit),
-               t_serie=t_serie, sufixo=sufixo, modo_ab=modo_ab, aberto=aberto, cat_op=cat_op, cats_sel=cats_sel,
-               n_cat=len(top_cat), n_cli=len(top_cli), n_forn=len(top_forn), sit_tipo=sit_tipo, sit_pares=[("Rec", "Contas a Receber por situação", sit_tipo["receber"]), ("Pag", "Contas a Pagar por situação", sit_tipo["pagar"])],
-               situacoes=V.por_situacao(rows),
-               lanc_cab=cab, qs_pag=qs_pag, lancamentos=tabela[(pag - 1) * LANC_POR_PAGINA: pag * LANC_POR_PAGINA], n_lanc=len(tabela),
-               pag=pag, paginas=paginas, ordem=ordem, asc=asc, l_tipo=l_tipo, l_cats=l_cats, busca=busca,
-               l_cat_op=sorted({r.categoria for r in rows}, key=C.sem_acento),
+               op_status=[(s, V.cor_situacao(s)) for s in todas_sit], todas_sit="|".join(todas_sit),
+               st_realizados="|".join(V.realizadas(todas_sit)), st_aberto="|".join(V.em_aberto(todas_sit)),
+               st_label=_rotulo_status(status_sel, todas_sit, False), st_label_c=_rotulo_status(status_sel, todas_sit, True),
+               op_status_ab=[(s, V.cor_situacao(s)) for s in st_aberto_op], st_ab_lista="|".join(st_aberto_op),
+               st_label_ab=_rotulo_status(status_sel, st_aberto_op, False),
+               t_serie=t_serie, t_saldo=(f"Saldo acumulado — {per['rotulo']} (R$)" if per else "Saldo acumulado (R$)"),
+               t_sit=(f"Contas por situação — {per['rotulo']} (R$ e %)" if per else "Contas por situação (R$ e %)"),
+               t_gastos_grupo=titulo("Gastos por grupo", "(R$ e %)"), t_entradas_grupo=titulo("Entradas por grupo", "(R$ e %)"),
+               t_evo_grupo=titulo("Evolução dos gastos por grupo", "(R$)"),
+               t_cats=f"{titulo('Categorias de gasto', '(R$ e %)')} · {_milhar(len(top_cat))}",
+               t_evo_cat=titulo("Evolução dos gastos por categoria", "(R$)"),
+               t_cli=f"{titulo('Clientes (maiores entradas)', '')} · {_milhar(len(top_cli))}",
+               t_forn=f"{titulo('Fornecedores (maiores gastos)', '')} · {_milhar(len(top_forn))}",
+               t_lanc=f"{titulo('Lançamentos', '', tipo_txt)} · {_milhar(len(tabela))}",
+               modo_ab=modo_ab, aberto=aberto, cat_op=cat_op, cats_sel=cats_sel,
+               sit_tipo=sit_tipo, sit_pares=[("Rec", "Contas a Receber por situação", sit_tipo["receber"]), ("Pag", "Contas a Pagar por situação", sit_tipo["pagar"])],
+               situacoes=V.por_situacao(rows), entradas_gc=V.entradas_grupo_categoria(rows),
+               lanc_cab=cab, qs_pag=qs_pag, qs_base=qs_base, lancamentos=tabela[(pag - 1) * LANC_POR_PAGINA: pag * LANC_POR_PAGINA], n_lanc=len(tabela),
+               pag=pag, paginas=paginas, ordem=ordem, asc=asc, l_tipo=l_tipo, l_cats=l_cats, busca=busca, l_cat_op=l_cat_op,
                graf=js(dict(modo=modo, serie=pontos, saldo=saldo, saldoDia=bool(per and per["modo"] == "dia"),
                             gastosGrupo=gastos_grupo, entradas=V.entradas_grupo_categoria(rows), evoGrupo=evo_grupo,
                             corGrupo={s: V.cor_grupo(s) for s in evo_grupo["series"]}, evoCat=evo_cat, gEvo=g_evo,

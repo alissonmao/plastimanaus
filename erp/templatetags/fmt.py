@@ -26,3 +26,17 @@ def pct(v, casas=1):
 @register.filter
 def item(d, k):
     return d.get(k) if hasattr(d, "get") else d[k]
+
+
+@register.filter
+def rs(v):
+    """Moeda como o Lovable/Intl (pt-BR): "-R$ 1.234,56" para negativos."""
+    if v in (None, ""):
+        return ""
+    v = float(v)
+    return f"{'-' if v < 0 else ''}R$ {_br(abs(v), 2)}"
+
+
+@register.filter
+def mi(v):
+    return "" if v in (None, "") else _br(float(v) / 1e6, 2)
