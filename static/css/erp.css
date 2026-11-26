@@ -211,3 +211,7 @@ a.ord{color:inherit;text-decoration:none;white-space:nowrap}a.ord:hover{text-dec
 /* Rotina (favoritos) */
 form.fav{display:inline;margin:0 0 0 10px;vertical-align:middle}form.fav button{background:none;border:0;cursor:pointer;font-size:24px;line-height:1;color:#c9b98a;padding:0 2px}
 form.fav button:hover,form.fav button.on{color:#d4a017}.vazio-menu{display:block;padding:4px 14px 8px 28px;font-size:11.5px;line-height:1.4;color:#a8a090}
+/* Pedidos (Omie) */
+tr.clic{cursor:pointer}.tg.ped-faturado{background:#e4f3e6;color:var(--ok)}.tg.ped-cancelado,.tg.ped-devolvido{background:#fde2e2;color:#b91c1c}
+.tg.ped-faturar{background:#fef3c7;color:#92400e}.tg.ped-pedido-de-venda,.tg.ped-propostaorcamento,.tg.ped-separar-estoque{background:#e0ecff;color:#1d4ed8}
+td.cli{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

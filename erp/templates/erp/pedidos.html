@@ -1,0 +1,43 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+<div class="pb-topo"><span class="sub">{% if sinc %}Cópia dos pedidos do Omie · atualizada em <b>{{ sinc|date:"d/m/Y H:i" }}</b> · atualiza sozinha de hora em hora{% else %}Os pedidos ainda não foram trazidos do Omie (vêm na próxima sincronização, de hora em hora).{% endif %}</span>
+  <a class="btn sec" href="?{{ qs_base }}&exportar=1">Exportar Excel</a></div>
+<form class="card filtros" method="get" id="ff">
+  <label>Previsão de<input type="date" name="de" value="{{ de|date:'Y-m-d' }}"></label>
+  <label>até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>
+  <div class="campo"><span>Situação</span>{% include "erp/_multi.html" with nome="sit" opcoes=op_sit sel=sit_sel todos="Todas" %}</div>
+  <label>Vendedor<select name="vendedor"><option value="">Todos</option>{% for v in op_vend %}<option {% if v == vend %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+  <label>Buscar<input name="q" value="{{ q }}" placeholder="Cliente, nº do pedido ou CNPJ" style="width:240px"></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a>
+</form>
+<div class="kpis k4">
+  <div class="kpi" title="Pedidos ainda não faturados, cancelados ou devolvidos"><small>Em aberto ⓘ</small><b>{{ kpi.abertos_valor|brl }}</b><em>{{ kpi.abertos }} pedidos{% if kpi.atrasados %} · {{ kpi.atrasados }} com previsão vencida{% endif %}</em></div>
+  <div class="kpi" title="Pedidos na etapa Faturar, aguardando a nota fiscal"><small>Na etapa Faturar ⓘ</small><b>{{ kpi.faturar_valor|brl }}</b><em>{{ kpi.faturar }} pedidos</em></div>
+  <div class="kpi"><small>Faturados</small><b class="ok">{{ kpi.faturados_valor|brl }}</b><em>{{ kpi.faturados }} pedidos</em></div>
+  <div class="kpi"><small>Cancelados</small><b class="neg">{{ kpi.cancelados_valor|brl }}</b><em>{{ kpi.cancelados }} pedidos · valor médio dos demais {{ kpi.ticket|brl|default:"—" }}</em></div>
+</div>
+{% if detalhe %}<div class="card" id="pedido"><div class="cab-card"><div><h2>Pedido {{ detalhe.numero }} — {{ detalhe.cliente }}</h2>
+  <p class="sub">{{ detalhe.situacao }} · previsão {{ detalhe.data_previsao|date:"d/m/Y"|default:"—" }} · incluído em {{ detalhe.data_inclusao|date:"d/m/Y"|default:"—" }} · vendedor {{ detalhe.vendedor|default:"—" }}{% if detalhe.cnpj_cpf %} · {{ detalhe.cnpj_cpf }}{% endif %}</p></div>
+  <a class="btn sec" href="?{{ qs_pag }}&p={{ pag }}">Fechar</a></div>
+  <div class="tabela"><table><tr><th>Código</th><th>Produto</th><th>Un.</th><th class="n">Quantidade</th><th class="n">Preço</th><th class="n">Desconto</th><th class="n">Total</th></tr>
+  {% for i in detalhe.itens.all %}<tr><td>{{ i.codigo_produto }}</td><td>{{ i.descricao }}</td><td>{{ i.unidade }}</td><td class="n">{{ i.quantidade|num:2 }}</td><td class="n">{{ i.valor_unitario|brl }}</td><td class="n">{{ i.valor_desconto|brl }}</td><td class="n">{{ i.valor_total|brl }}</td></tr>{% endfor %}
+  <tr><td colspan="6"><b>Total do pedido</b>{% if detalhe.valor_descontos %} (descontos {{ detalhe.valor_descontos|brl }}){% endif %}</td><td class="n"><b>{{ detalhe.valor_total|brl }}</b></td></tr></table></div>
+  <p class="sub">Parcelas: {{ detalhe.parcelas|default:"—" }} · Peso líquido: {{ detalhe.peso_liquido|num:1 }} kg{% if detalhe.observacao %} · Obs.: {{ detalhe.observacao }}{% endif %}</p></div>{% endif %}
+<div class="card"><h2>Pedidos · {{ n }}{% if n != total %} de {{ total }}{% endif %}</h2>
+  <div class="tabela" style="max-height:65vh"><table><tr>{% for c in cab %}<th class="{% if c.num %}n{% endif %}"><a class="ord" href="{{ c.url }}">{{ c.t }} {{ c.seta }}</a></th>{% endfor %}</tr>
+  {% for p in pedidos %}<tr class="clic" onclick="location='?{{ qs_pag }}&p={{ pag }}&pedido={{ p.codigo }}#pedido'">
+    <td><a href="?{{ qs_pag }}&p={{ pag }}&pedido={{ p.codigo }}#pedido">{{ p.numero }}</a></td><td class="{% if not p.faturado and not p.cancelado and p.data_previsao and p.data_previsao < hoje %}neg{% endif %}">{{ p.data_previsao|date:"d/m/Y"|default:"—" }}</td>
+    <td>{{ p.data_inclusao|date:"d/m/Y"|default:"—" }}</td><td class="cli" title="{{ p.cliente }}">{{ p.cliente }}</td><td>{{ p.vendedor|default:"—" }}</td>
+    <td><span class="tg ped-{{ p.situacao|slugify }}">{{ p.situacao }}</span></td><td class="n">{{ p.qtd_itens }}</td><td class="n">{{ p.peso_liquido|num:1 }}</td>
+    <td class="n {% if p.cancelado %}neg{% endif %}">{{ p.valor_total|brl }}</td></tr>
+  {% empty %}<tr><td colspan="9" class="vazio">Nenhum pedido</td></tr>{% endfor %}</table></div>
+  <div class="paginas"><span>Página {{ pag }} de {{ paginas }} · {{ n }} pedidos</span>
+    {% if pag > 1 %}<a class="btn sec" href="?{{ qs_pag }}&p={{ pag|add:-1 }}">Anterior</a>{% else %}<span class="btn sec off">Anterior</span>{% endif %}
+    {% if pag < paginas %}<a class="btn sec" href="?{{ qs_pag }}&p={{ pag|add:1 }}">Próxima</a>{% else %}<span class="btn sec off">Próxima</span>{% endif %}</div>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+document.querySelectorAll("details.multi").forEach(d => d.querySelector("[data-todos]")?.addEventListener("click", () => d.querySelectorAll(".lista input").forEach(c => c.checked = false)));
+document.querySelectorAll("details.multi .filtra").forEach(i => i.addEventListener("input", e => { const q = e.target.value.toLowerCase();
+  i.closest(".pop").querySelectorAll(".lista label").forEach(l => l.hidden = q && !l.textContent.toLowerCase().includes(q)); }));
+</script>{% endblock %}

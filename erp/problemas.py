@@ -14,7 +14,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from . import calculos as C
-from .models import Apontamento, FluxoCaixa, Maquina, MetaVendedor, SaldoContaOmie, SincronizacaoOmie, Venda
+from .models import Apontamento, FluxoCaixa, Maquina, MetaVendedor, PedidoOmie, SaldoContaOmie, SincronizacaoOmie, Venda
 
 log = logging.getLogger(__name__)
 Z = Decimal(0)
@@ -135,6 +135,7 @@ class Contexto:
             vendas=f"Vendas do Omie até {dma(ven['d'])} · carregadas em {loc(ven['c'])}",
             producao=f"Apontamentos até {dma(ap['d'])} · último lançado em {loc(ap['c'])}",
             cadastro="Cadastros do ERP e títulos do Omie",
+            pedidos=f"Pedidos do Omie · atualizados em {loc(PedidoOmie.objects.aggregate(d=Max('sincronizado_em'))['d'])}",
             sistema="Integrações e importações",
         )
 
@@ -407,6 +408,31 @@ def r_preco_baixo(ctx):
                      itens, [("data", "Data", "data"), ("nota", "Nota", "txt"), ("cliente", "Cliente", "txt"),
                              ("vendedor", "Vendedor", "txt"), ("produto", "Produto", "txt"), ("preco", "Preço", "brl"),
                              ("media", "Média 3 meses", "brl"), ("pct", "Abaixo", "pct"), ("perda", "Diferença no total", "brl")], total)
+
+
+@regra("pedido_parado_faturar", "Pedido parado na etapa Faturar", "Vendas", ATENCAO,
+       "Confira com o faturamento por que a nota não saiu (estoque, cadastro do cliente, crédito ou erro fiscal) e emita a "
+       "nota no Omie (Vendas → Pedidos → Faturar). Se o pedido não vai mais sair, cancele-o no Omie.",
+       fonte="pedidos", link="fat_pedidos")
+def r_pedido_parado_faturar(ctx):
+    q = PedidoOmie.objects.filter(etapa="50", faturado=False, cancelado=False, devolvido=False)
+    if ctx.vendedor:
+        q = q.filter(vendedor=ctx.vendedor)
+    itens = []
+    for p in q:
+        desde = p.data_alteracao or p.data_inclusao
+        if desde and (ctx.hoje - desde).days > 3:
+            itens.append(dict(numero=p.numero, cliente=p.cliente, vendedor=p.vendedor, previsao=p.data_previsao, desde=desde,
+                              dias=(ctx.hoje - desde).days, valor=p.valor_total))
+    if not itens:
+        return None
+    itens.sort(key=lambda x: (-x["dias"], -x["valor"]))
+    total = sum(i["valor"] for i in itens)
+    return Resultado(f"{plural(len(itens), 'pedido parado', 'pedidos parados')} na etapa Faturar há mais de 3 dias — {brl(total)}",
+                     f"O mais antigo é o pedido {itens[0]['numero']} ({itens[0]['cliente']}), sem mudança há {itens[0]['dias']} dias.",
+                     itens, [("numero", "Pedido", "txt"), ("cliente", "Cliente", "txt"), ("vendedor", "Vendedor", "txt"),
+                             ("previsao", "Previsão", "data"), ("desde", "Última mudança", "data"), ("dias", "Dias parado", "int"),
+                             ("valor", "Valor", "brl")], total)
 
 
 # ===================================================================== Produção

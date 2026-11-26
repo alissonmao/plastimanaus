@@ -45,6 +45,10 @@ class Command(BaseCommand):
                     omie.atualizar_saldos(saida=self.stdout.write)
                 except Exception as e:  # saldo é complemento: não derruba a sincronização
                     self.stderr.write(f"Saldos das contas: {e}")
+                try:
+                    omie.sincronizar_pedidos(saida=self.stdout.write)
+                except Exception as e:  # pedidos também são complemento
+                    self.stderr.write(f"Pedidos de venda: {e}")
         except Exception as e:  # registra o erro para aparecer na tela
             reg.status, reg.mensagem = "erro", str(e)[:2000]
             raise CommandError(str(e))

@@ -26,6 +26,7 @@ MENU = [
     ]),
     ("Faturamento", "📈", [
         ("vendas", "Visão geral (Omie)", None),
+        ("fat_pedidos", "Pedidos (Omie)", None),
         ("fat_notas", "Notas fiscais", None),
         ("fat_clientes", "Clientes", None),
         ("fat_vendedores", "Vendedores", None),

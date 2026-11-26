@@ -317,3 +317,56 @@ def atualizar_saldos(saida=print) -> int:
         n += 1
     saida(f"Saldos de {n} contas atualizados")
     return n
+
+
+# --------------------------------------------------------------------- pedidos de venda
+ETAPAS_PEDIDO = {"00": "Proposta/Orçamento", "10": "Pedido de venda", "20": "Separar estoque", "30": "Em separação",
+                 "40": "Separado", "50": "Faturar", "60": "Faturado", "70": "Entregue", "80": "Concluído"}
+
+
+def _pedido(p, clientes, vendedores):
+    cab, info = p.get("cabecalho") or {}, p.get("infoCadastro") or {}
+    tot, adic = p.get("total_pedido") or {}, p.get("informacoes_adicionais") or {}
+    cli = clientes.get(cab.get("codigo_cliente")) or {}
+    etapa = str(cab.get("etapa") or "")
+    cancelado, devolvido, faturado = info.get("cancelado") == "S", info.get("devolvido") == "S", info.get("faturado") == "S"
+    situacao = ("Cancelado" if cancelado else "Devolvido" if devolvido else "Faturado" if faturado
+                else ETAPAS_PEDIDO.get(etapa, f"Etapa {etapa}"))
+    parcelas = (p.get("lista_parcelas") or {}).get("parcela") or []
+    itens = []
+    for d in p.get("det") or []:
+        pr = d.get("produto") or {}
+        itens.append(dict(codigo_produto=str(pr.get("codigo") or ""), descricao=(pr.get("descricao") or "")[:300],
+                          unidade=(pr.get("unidade") or "")[:10], quantidade=dec(pr.get("quantidade")),
+                          valor_unitario=dec(pr.get("valor_unitario")), valor_desconto=dec(pr.get("valor_desconto")),
+                          valor_total=dec(pr.get("valor_total"))))
+    return dict(
+        codigo=cab.get("codigo_pedido"), numero=str(cab.get("numero_pedido") or ""), data_previsao=data_omie(cab.get("data_previsao")),
+        data_inclusao=data_omie(info.get("dInc")), data_alteracao=data_omie(info.get("dAlt")),
+        cliente=(cli.get("razao_social") or cli.get("nome_fantasia") or str(cab.get("codigo_cliente") or ""))[:300],
+        cnpj_cpf=(cli.get("cnpj_cpf") or "")[:30], vendedor=(vendedores.get(adic.get("codVend")) or "")[:200],
+        etapa=etapa[:4], situacao=situacao, faturado=faturado, cancelado=cancelado, devolvido=devolvido,
+        valor_mercadorias=dec(tot.get("valor_mercadorias")), valor_descontos=dec(tot.get("valor_descontos")),
+        valor_total=dec(tot.get("valor_total_pedido")), qtd_itens=len(itens),
+        peso_liquido=dec((p.get("frete") or {}).get("peso_liquido")),
+        parcelas=", ".join(f"{x.get('data_vencimento', '')} R$ {x.get('valor', 0)}" for x in parcelas)[:300],
+        observacao=((p.get("observacoes") or {}).get("obs_venda") or "")), itens
+
+
+def sincronizar_pedidos(saida=print) -> int:
+    """Traz todos os pedidos de venda do Omie e substitui a cópia local. Só leitura no Omie."""
+    from django.db import transaction
+    from .models import PedidoItemOmie, PedidoOmie
+    clientes, vendedores = mapa_clientes(), mapa_vendedores()
+    lidos = [_pedido(p, clientes, vendedores) for p in paginar("produtos/pedido/", "ListarPedidos", "pedido_venda_produto",
+                                                               {"apenas_importado_api": "N"}, por_pagina=50)]
+    lidos = [x for x in lidos if x[0]["codigo"]]
+    if not lidos and PedidoOmie.objects.count() > 20:
+        raise OmieErro("Omie não devolveu nenhum pedido; a cópia local foi mantida")
+    with transaction.atomic():
+        PedidoOmie.objects.all().delete()
+        objs = PedidoOmie.objects.bulk_create([PedidoOmie(**cab) for cab, _ in lidos], batch_size=500)
+        PedidoItemOmie.objects.bulk_create([PedidoItemOmie(pedido=o, **it) for o, (_, itens) in zip(objs, lidos) for it in itens],
+                                           batch_size=1000)
+    saida(f"{len(lidos)} pedidos do Omie atualizados")
+    return len(lidos)

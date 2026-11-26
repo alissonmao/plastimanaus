@@ -392,3 +392,48 @@ class Favorito(models.Model):
         db_table = "favorito"
         ordering = ["criado_em"]
         constraints = [models.UniqueConstraint(fields=["usuario", "url"], name="favorito_unico")]
+
+
+class PedidoOmie(models.Model):
+    """Pedido de venda do Omie (só leitura; atualizado de hora em hora)."""
+    codigo = models.BigIntegerField("código Omie", unique=True)
+    numero = models.CharField("número", max_length=40, db_index=True)
+    data_previsao = models.DateField("previsão", null=True, blank=True, db_index=True)
+    data_inclusao = models.DateField("incluído em", null=True, blank=True, db_index=True)
+    data_alteracao = models.DateField("alterado em", null=True, blank=True)
+    cliente = models.CharField(max_length=300, db_index=True)
+    cnpj_cpf = models.CharField(max_length=30, blank=True)
+    vendedor = models.CharField(max_length=200, blank=True, db_index=True)
+    etapa = models.CharField(max_length=4, db_index=True)
+    situacao = models.CharField("situação", max_length=40, db_index=True)
+    faturado = models.BooleanField(default=False)
+    cancelado = models.BooleanField(default=False)
+    devolvido = models.BooleanField(default=False)
+    valor_mercadorias = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    valor_descontos = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    valor_total = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    qtd_itens = models.IntegerField(default=0)
+    peso_liquido = models.DecimalField(max_digits=14, decimal_places=3, default=0)
+    parcelas = models.CharField(max_length=300, blank=True)
+    observacao = models.TextField(blank=True)
+    sincronizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "pedido_omie"
+        ordering = ["-data_previsao", "-numero"]
+        verbose_name = "pedido (Omie)"
+        verbose_name_plural = "pedidos (Omie)"
+
+
+class PedidoItemOmie(models.Model):
+    pedido = models.ForeignKey(PedidoOmie, on_delete=models.CASCADE, related_name="itens")
+    codigo_produto = models.CharField(max_length=60, blank=True)
+    descricao = models.CharField(max_length=300)
+    unidade = models.CharField(max_length=10, blank=True)
+    quantidade = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    valor_unitario = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    valor_desconto = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    valor_total = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+
+    class Meta:
+        db_table = "pedido_item_omie"
