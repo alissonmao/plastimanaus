@@ -159,3 +159,50 @@ main.lv select.h9{height:36px;font-size:14px;width:100%}
 .rk-eixo{display:grid;grid-template-columns:190px minmax(0,1fr);height:30px;padding-right:4px}
 .rk-eixo .rk-b{border-top:1px solid var(--lv-muted-fg)}
 .rk-eixo b{position:absolute;top:6px;transform:translateX(-50%);white-space:nowrap;font:400 11px var(--lv-sans);color:var(--lv-muted-fg)}
+
+/* Faturamento e Chão de Fábrica */
+.lv-sq{display:inline-block;width:8px;height:8px;border-radius:2px;flex:none}
+.lv-centro{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;pointer-events:none}
+.lv-art{min-width:0;border:1px solid var(--lv-border);border-radius:6px;background:var(--lv-card);padding:12px}
+.lv-art h3{margin:0;font:600 14px/20px var(--lv-sans)}.lv-art .sub{margin:0;font-size:12px;color:var(--lv-muted-fg)}
+.lv-mini{width:100%;border-collapse:collapse;font-size:12px}
+.lv-mini th{padding-bottom:4px;text-align:left;font-weight:500;color:var(--lv-muted-fg)}.lv-mini th.r,.lv-mini td.r{text-align:right}
+.lv-mini td{padding:4px 0}.lv-mini td.r{white-space:nowrap;padding-left:8px}
+.lv-mini tfoot td{border-top:1px solid var(--lv-border);padding-top:8px;font-weight:600}
+.lv-bol{display:inline-block;width:8px;height:8px;border-radius:50%;border:1px solid;margin-right:6px;vertical-align:middle}
+.lv-kpi .val.lg{font-size:18px;line-height:28px}
+.lv-secao>h2{border-bottom:1px solid var(--lv-border);padding-bottom:4px;font:600 16px/24px var(--lv-sans);margin:0}
+.lv-secao>*+*{margin-top:16px}
+.lv-h2{margin:0 0 12px;font:600 16px/24px var(--lv-sans)}
+.lv-g{display:grid;gap:16px;min-width:0}.lv-g>*{min-width:0}
+@media(min-width:1024px){.lv-g.lg2{grid-template-columns:repeat(2,minmax(0,1fr))}.lv-g.lg3{grid-template-columns:repeat(3,minmax(0,1fr))}.lv-g.lg3 .span2{grid-column:span 2}}
+@media(min-width:1280px){.lv-g.xl2{grid-template-columns:repeat(2,minmax(0,1fr))}.lv-g.xl3{grid-template-columns:repeat(3,minmax(0,1fr))}.lv-g.xl3 .span2,.lv-g.xl2 .span2{grid-column:span 2}.lv-g.xl4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:768px){.lv-g.md2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.lv-kg{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr))}@media(min-width:768px){.lv-kg.md4{grid-template-columns:repeat(4,minmax(0,1fr))}.lv-kg.md3{grid-template-columns:repeat(3,minmax(0,1fr))}.lv-kg.md7{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:1536px){.lv-kg.x6{grid-template-columns:repeat(6,minmax(0,1fr))}}@media(min-width:1280px){.lv-kg.md7{grid-template-columns:repeat(7,minmax(0,1fr))}}
+.lv-kg.g3{gap:12px}
+.lv-fgrid{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--lv-border);border-radius:6px;background:var(--lv-card);padding:12px}
+@media(min-width:768px){.lv-fgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(min-width:1280px){.lv-fgrid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.lv-fgrid.p7{border:0;padding:0;background:none}@media(min-width:768px){.lv-fgrid.p7{grid-template-columns:repeat(7,minmax(0,1fr))}}
+.lv-fgrid input,.lv-fgrid select{height:36px!important;font-size:14px!important;width:100%}
+.lv-fgrid .lv-btn.lg{height:36px;font-size:14px;font-weight:400}
+.lv-nota{margin:-8px 0 0;font-size:11px;color:var(--lv-muted-fg)}
+.lv-chips{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.lv-chips .lv-btn.sec{height:auto;min-height:36px;white-space:normal}
+.lv-leg-c{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 12px;margin-top:8px;font-size:11px;color:var(--lv-muted-fg)}
+.lv-leg-c span{display:inline-flex;align-items:center;gap:4px}.lv-leg-c i{display:inline-block;width:10px;height:10px;border-radius:2px}
+.lv-tabela td.mut{color:var(--lv-muted-fg)}.lv-tabela td.los{color:var(--lv-loss)}.lv-tabela tr.tot td{background:var(--lv-secondary);font-weight:600}
+.lv-tabela th button{background:none;border:0;padding:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer}
+.lv-campo .lbl{font:500 12px/1 var(--lv-sans);color:var(--lv-muted-fg)}
+/* neutraliza estilos globais do ERP (tabelas e títulos creme/dourados) dentro das telas Lovable */
+main.lv h2,main.lv h3{color:var(--lv-fg);font-family:var(--lv-sans)}
+main.lv table th,main.lv table td{border-bottom:0;background:transparent}
+main.lv table th{position:static;color:var(--lv-muted-fg)}
+main.lv tr:hover td{background:transparent}
+main.lv .lv-tabela th{position:sticky;background:var(--lv-muted);border-bottom:1px solid var(--lv-border)}
+main.lv .lv-tabela td{border-bottom:1px solid var(--lv-border)}
+main.lv .lv-tabela tbody tr:hover td{background:var(--lv-accent)}
+main.lv .lv-sun th{border-bottom:1px solid var(--lv-border)}
+main.lv .lv-sun tr.g td{border-bottom:1px solid var(--lv-border)}
+main.lv .lv-sun tr.c td{border-bottom:1px solid rgba(226,232,240,.5)}
+main.lv .lv-sun tr.g:hover td{background:rgba(237,243,244,.5)}

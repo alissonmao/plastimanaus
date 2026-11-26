@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from . import calculos as C
 from . import planilhas as P
-from .models import (Apontamento, Cliente, Cor, FluxoCaixa, Maquina, MetaVendedor, OrdemProducao, Produto,
+from .models import (Apontamento, Cliente, Cor, FluxoCaixa, Maquina, Medida, MetaVendedor, OrdemProducao, Produto,
                      Setor, TipoSacola, Turno, Venda, VendaPlasti)
 from .cadastros import CADASTROS
 
@@ -82,35 +82,40 @@ def _linhas_producao(request, padrao_dias=6):
     return linhas, filtros
 
 
+AP_COLS = ["data", "turno_id", "turno", "maquina_id", "maquina", "maquinaCodigo", "familia", "setor", "processo", "produto", "cor", "tipo",
+           "cliente", "op", "ok", "apara", "alca", "borra", "perdas", "total", "qtd_milheiro", "cap", "horasDisp", "horasOk", "horasPerdas",
+           "horasTrab", "largura_mm", "descricao"]
+AP_NUM = {"ok", "apara", "alca", "borra", "perdas", "total", "qtd_milheiro", "cap", "horasDisp", "horasOk", "horasPerdas", "horasTrab", "largura_mm"}
+
+
 def dashboard(request):
-    linhas, filtros = _linhas_producao(request)
-    tot = C.totalizar(linhas)
-    util = C.utilizacao_capacidade(linhas)
-
-    # Produção diária por setor (kg OK)
-    datas = sorted({l.a.data for l in linhas})
-    setores = C.ordenar_setores({l.setor for l in linhas})
-    por_dia_setor = defaultdict(float)
-    for l in linhas:
-        por_dia_setor[(l.a.data, l.setor)] += l.ok
-    serie_setor = dict(labels=[f"{d:%d/%m} {C.DIAS_SEMANA[d.weekday()]}" for d in datas],
-                       series=[dict(nome=s, valores=[round(por_dia_setor[(d, s)], 2) for d in datas]) for s in setores])
-
-    # Perdas por tipo
-    perdas = dict(labels=["Apara", "Alça", "Borra"], valores=[round(tot["apara"], 2), round(tot["alca"], 2), round(tot["borra"], 2)])
-
-    def rosca(chave):
-        g = sorted(C.agrupar(linhas, chave), key=lambda x: -x["ok"])
-        return dict(labels=[x["grupo"] for x in g], valores=[round(x["ok"], 2) for x in g])
-
-    por_maquina = sorted(C.agrupar(linhas, lambda l: l.maquina), key=lambda x: -x["total"])
-    ctx = dict(
-        titulo="Chão de Fábrica — Produção", filtros=filtros, tot=tot, util=util, por_maquina=por_maquina,
-        graf=js(dict(setor=serie_setor, perdas=perdas, produto=rosca(lambda l: l.produto), cor=rosca(lambda l: l.cor),
-                     tipo=rosca(lambda l: l.tipo if l.produto in ("Sacola", "Saco") else ""),
-                     util=dict(labels=[m["maquina"] for m in util["maquinas"]],
-                               valores=[round((m["util"] or 0) * 100, 1) for m in util["maquinas"]]))),
+    """Chão de Fábrica - Produção: igual ao Lovable. O período vem da URL; os outros filtros e os gráficos rodam no navegador."""
+    hoje = date.today()
+    de, ate = _data(request.GET.get("de"), hoje - timedelta(days=6)), _data(request.GET.get("ate"), hoje)
+    if de > ate:
+        de, ate = ate, de
+    qs = (Apontamento.objects.filter(data__range=(de, ate)).order_by("data", "created_at")
+          .select_related("turno", "maquina__familia__setor", "produto", "cor", "tipo_sacola"))
+    linhas = C.enriquecer(qs, _op_cliente())
+    rows = [dict(data=l.a.data.isoformat(), turno_id=str(l.a.turno_id), turno=l.turno, maquina_id=str(l.a.maquina_id), maquina=l.maquina,
+                 maquinaCodigo=l.maquina_codigo, familia=l.familia, setor=l.setor, processo=l.processo, produto=l.produto, cor=l.cor, tipo=l.tipo,
+                 cliente=l.cliente, op=l.a.op, ok=l.ok, apara=l.apara, alca=l.alca, borra=l.borra, perdas=l.perdas, total=l.total,
+                 qtd_milheiro=C.f(l.a.qtd_milheiro), cap=l.cap, horasDisp=l.horas_disp, horasOk=l.horas_ok, horasPerdas=l.horas_perdas,
+                 horasTrab=l.horas_trab, largura_mm=(C.f(l.a.largura_mm) if l.a.largura_mm is not None else None), descricao=l.descricao)
+            for l in linhas]
+    maquinas = Maquina.objects.select_related("familia__setor")
+    look = dict(
+        setores=[dict(nome=s.nome, processo=s.processo) for s in Setor.objects.all().order_by("nome")],
+        maquinas=[dict(id=str(m.pk), descricao=m.descricao, codigo=m.codigo, ativo=m.ativo, cap=C.f(m.capacidade_kg_h) if m.capacidade_kg_h else None,
+                       setor=m.familia.setor.nome, processo=m.familia.setor.processo) for m in maquinas],
+        turnos=[dict(id=str(t.pk), codigo=t.codigo, horas=t.horas) for t in Turno.objects.all().order_by("codigo")],
+        clientes=list(Cliente.objects.order_by("nome").values_list("nome", flat=True)),
+        cores=list(Cor.objects.order_by("nome").values_list("nome", flat=True)),
+        tipos=list(TipoSacola.objects.order_by("created_at").values_list("nome", flat=True)),
+        larguras=[C.f(v) for v in Medida.objects.filter(tipo="largura").values_list("valor", flat=True)],
     )
+    ctx = dict(titulo="Chão de Fábrica - Produção", de=de, ate=ate, n_apont=len(rows),
+               dados=dict(rows=empacotar(rows, AP_COLS, AP_NUM), look=look, de=de.isoformat(), ate=ate.isoformat()))
     return render(request, "erp/dashboard.html", ctx)
 
 
@@ -213,39 +218,44 @@ def relatorios(request):
 
 
 # ===================================================================== Vendas Omie
+VENDA_COLS = ["data", "cliente", "produto", "linha", "quantidade", "valor_unitario", "total", "kg", "familia", "descricao", "grupo", "cor",
+              "produto_simplificado", "nota_fiscal", "tipo_documento", "orcamento", "bairro", "cidade", "estado", "vendedor", "cnpj_cpf", "unidade"]
+VENDA_NUM = {"quantidade", "valor_unitario", "total", "kg"}
+
+
+def empacotar(rows, cols, numericas):
+    """Colunas + dicionário de textos: deixa o JSON das telas bem menor que uma lista de objetos."""
+    dic, idx = [], {}
+    strs = [i for i, c in enumerate(cols) if c not in numericas]
+
+    def cod(v):
+        if v is None or v == "":
+            return None
+        v = str(v)
+        if v not in idx:
+            idx[v] = len(dic)
+            dic.append(v)
+        return idx[v]
+    out = []
+    for r in rows:
+        linha = []
+        for i, c in enumerate(cols):
+            v = getattr(r, c) if not isinstance(r, dict) else r.get(c)
+            if c in numericas:
+                linha.append(None if v is None else round(float(v), 4))
+            else:
+                linha.append(cod(v.isoformat() if hasattr(v, "isoformat") else v))
+        out.append(linha)
+    return dict(cols=cols, dic=dic, strs=strs, rows=out)
+
+
 def vendas(request):
-    de, ate = periodo(request, Venda, "data")
-    qs = Venda.objects.filter(data__range=(de, ate))
-    linhas_sel, vend_sel = lista_get(request, "linha"), lista_get(request, "vendedor")
-    if linhas_sel:
-        qs = qs.filter(linha__in=linhas_sel)
-    if vend_sel:
-        qs = qs.filter(vendedor__in=vend_sel)
-    busca = request.GET.get("q", "").strip()
-    if busca:
-        qs = qs.filter(cliente__icontains=busca) | qs.filter(produto__icontains=busca)
-    rows = list(qs)
+    """Faturamento base Omie: igual ao Lovable — a página recebe todos os itens e filtra/calcula no navegador."""
+    rows = list(Venda.objects.all().order_by("data", "id"))
     if request.GET.get("exportar"):
         campos = [f.name for f in Venda._meta.fields if f.name not in ("id", "created_at")]
         return P.xlsx_response([{c: getattr(r, c) for c in campos} for r in rows], "vendas")
-    g = request.GET.get("g", "mes")
-    tot = C.totais_vendas(rows)
-    rk_cli = C.ranking(rows, lambda r: r.cliente)
-    rk_linha = C.ranking(rows, lambda r: r.linha)
-    rk_vend = C.ranking(rows, lambda r: P.texto(r.vendedor) or "(sem vendedor)")
-    rk_uf = C.ranking(rows, lambda r: P.texto(r.estado).upper() or "(sem UF)")
-    rk_cor = C.ranking(rows, lambda r: P.texto(r.cor) or "(sem cor)")
-    rk_prod = C.ranking(rows, lambda r: P.texto(r.produto_simplificado) or C.codigo_produto(r.produto))
-    serie = C.serie_vendas_periodo(rows, g)
-    ctx = dict(
-        titulo="Faturamento base Omie", de=de, ate=ate, g=g, granularidades=GRANULARIDADES, tot=tot,
-        rk_cli=rk_cli[:20], rk_vend=rk_vend, rk_uf=rk_uf[:15], rk_prod=rk_prod[:20], rk_linha=rk_linha,
-        op_linhas=Venda.objects.values_list("linha", flat=True).distinct().order_by("linha"),
-        op_vendedores=Venda.objects.exclude(vendedor=None).values_list("vendedor", flat=True).distinct().order_by("vendedor"),
-        linhas_sel=linhas_sel, vend_sel=vend_sel, q=busca, itens=rows[-200:][::-1],
-        graf=js(dict(serie=serie, linha=dict(labels=[x["nome"] for x in rk_linha], valores=[round(x["total"], 2) for x in rk_linha]),
-                     cor=dict(labels=[x["nome"] for x in rk_cor[:12]], valores=[round(x["total"], 2) for x in rk_cor[:12]]))),
-    )
+    ctx = dict(titulo="Faturamento base Omie", n_itens=len(rows), dados=empacotar(rows, VENDA_COLS, VENDA_NUM))
     return render(request, "erp/vendas.html", ctx)
 
 
