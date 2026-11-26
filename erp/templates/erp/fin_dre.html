@@ -5,19 +5,30 @@
   <label>Regime<select name="regime"><option value="caixa" {% if regime == 'caixa' %}selected{% endif %}>Caixa (pagamentos)</option><option value="competencia" {% if regime == 'competencia' %}selected{% endif %}>Competência (emissão)</option></select></label>
   <button class="btn">Atualizar</button></form>
 <div class="card"><h2>Receitas, despesas e resultado por mês</h2><div class="chart"><canvas id="g"></canvas></div></div>
-<div class="card tabela" style="max-height:none"><table>
+<div class="card tabela" style="max-height:none"><div class="dre-acoes"><button type="button" class="btn sec" id="abrir-todos">Abrir todas as subcategorias</button></div><table>
 <tr><th>Conta</th>{% for m in meses %}<th class="n">{{ m }}</th>{% endfor %}<th class="n">Total</th></tr>
 {% for e in estrutura %}
 <tr class="total"><td class="grupo">{{ e.tipo }}</td>{% for v in e.totais %}<td class="n grupo">{{ v|num:0 }}</td>{% endfor %}<td class="n grupo">{{ e.total|num:0 }}</td></tr>
 {% for g, vals, tot, cats in e.blocos %}
-<tr><td><details><summary style="cursor:pointer"><b>{{ g }}</b></summary>{% for c, cv, ct in cats %}<div style="padding-left:14px;color:var(--muted)">{{ c }}: {{ ct|brl }}</div>{% endfor %}</details></td>{% for v in vals %}<td class="n">{{ v|num:0 }}</td>{% endfor %}<td class="n"><b>{{ tot|num:0 }}</b></td></tr>
+<tr class="dre-g" data-g="{{ forloop.parentloop.counter }}-{{ forloop.counter }}"><td><span class="seta">▸</span> <b>{{ g }}</b> <small class="sub">({{ cats|length }})</small></td>{% for v in vals %}<td class="n"><b>{{ v|num:0 }}</b></td>{% endfor %}<td class="n"><b>{{ tot|num:0 }}</b></td></tr>
+{% for c, cv, ct in cats %}<tr class="sub dre-c" data-g="{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}" hidden><td>{{ c }}</td>{% for v in cv %}<td class="n">{% if v %}{{ v|num:0 }}{% else %}–{% endif %}</td>{% endfor %}<td class="n">{{ ct|num:0 }}</td></tr>{% endfor %}
 {% endfor %}{% endfor %}
 <tr class="total"><td>Resultado</td>{% for v in res %}<td class="n {% if v < 0 %}neg{% else %}ok{% endif %}">{{ v|num:0 }}</td>{% endfor %}<td class="n {% if res_total < 0 %}neg{% else %}ok{% endif %}">{{ res_total|num:0 }}</td></tr>
 <tr><td>Margem</td>{% for v in margem %}<td class="n">{{ v|pct }}</td>{% endfor %}<td></td></tr>
 </table></div>
-<p class="helptext">Grupos e categorias vêm do plano de categorias do Omie. Clique no nome do grupo para ver as categorias. Contas excluídas da integração (Santander) não entram.</p>
+<p class="helptext">Grupos e categorias vêm do plano de categorias do Omie. Clique no grupo para ver as subcategorias com o valor de cada mês. Contas excluídas da integração (Santander) não entram.</p>
 {% endblock %}
 {% block scripts %}<script>
+document.querySelectorAll("tr.dre-g").forEach(tr => tr.addEventListener("click", () => {
+  const abrir = !tr.classList.contains("on"); tr.classList.toggle("on", abrir);
+  document.querySelectorAll(`tr.dre-c[data-g="${tr.dataset.g}"]`).forEach(c => c.hidden = !abrir);
+}));
+document.getElementById("abrir-todos").addEventListener("click", e => {
+  const abrir = !e.target.classList.contains("on"); e.target.classList.toggle("on", abrir);
+  e.target.textContent = abrir ? "Fechar todas as subcategorias" : "Abrir todas as subcategorias";
+  document.querySelectorAll("tr.dre-g").forEach(tr => tr.classList.toggle("on", abrir));
+  document.querySelectorAll("tr.dre-c").forEach(c => c.hidden = !abrir);
+});
 const G = {{ graf|safe }};
 barras("g", G.labels, [{nome:"Receitas", valores:G.rec, cor:"#0f7a3d"}, {nome:"Despesas", valores:G.desp, cor:"#c62828"}, {nome:"Resultado", valores:G.res, tipo:"line", cor:"#2f80ed"}], {moeda:true});
 </script>{% endblock %}
