@@ -370,3 +370,97 @@ def sincronizar_pedidos(saida=print) -> int:
                                            batch_size=1000)
     saida(f"{len(lidos)} pedidos do Omie atualizados")
     return len(lidos)
+
+
+# ===================================================================== Estoque (só leitura)
+TIPOS_ITEM = {"00": "Revenda", "01": "Matéria-prima", "02": "Embalagem", "03": "Produto em processo", "04": "Produto acabado",
+              "05": "Subproduto", "06": "Produto intermediário", "07": "Uso e consumo", "08": "Ativo imobilizado",
+              "09": "Serviço", "10": "Outros insumos", "99": "Outros"}
+MOV_INICIO = date(2025, 12, 1)   # início do uso do estoque no Omie
+HORA_COMPLETA = 3                # de madrugada traz o histórico inteiro; nas outras horas só os 2 últimos meses
+
+
+def _pag_estoque(endpoint, call, lista, param):
+    # o Omie devolve no máximo 100 por página nessas listas
+    return paginar(endpoint, call, lista, param, por_pagina=100, chave_pag="nPagina", chave_qtd="nRegPorPagina",
+                   chave_total="nTotPaginas")
+
+
+def _meses(ini, fim):
+    d = ini.replace(day=1)
+    while d <= fim:
+        prox = (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+        yield max(d, ini), min(prox - timedelta(days=1), fim)
+        d = prox
+
+
+def _produto(p):
+    info = p.get("info") or {}
+    return dict(codigo_produto=p.get("codigo_produto"), codigo=str(p.get("codigo") or "")[:60], descricao=(p.get("descricao") or "")[:300],
+                familia=(p.get("descricao_familia") or "")[:120], unidade=(p.get("unidade") or "")[:10],
+                tipo_item=TIPOS_ITEM.get(str(p.get("tipoItem") or ""), str(p.get("tipoItem") or ""))[:40],
+                ncm=(p.get("ncm") or "")[:20], ean=(p.get("ean") or "")[:30], peso_liquido=dec(p.get("peso_liq")),
+                peso_bruto=dec(p.get("peso_bruto")), estoque_minimo=dec(p.get("estoque_minimo")), preco=dec(p.get("valor_unitario")),
+                inativo=p.get("inativo") == "S", alterado_em=data_omie(info.get("dAlt")))
+
+
+def sincronizar_estoque(saida=print, hoje=None, completo=None) -> str:
+    """Traz do Omie o cadastro de produtos, a posição de estoque de cada local e as movimentações,
+    e substitui a cópia local. Só leitura no Omie.
+    As movimentações vêm mês a mês e local por local: com período longo ou sem local o Omie corta registros.
+    Sem `completo`, refaz só os 2 últimos meses (exceto de madrugada ou com a cópia vazia)."""
+    from django.db import transaction
+    from .models import EstoqueOmie, MovEstoqueOmie, ProdutoOmie
+    hoje = hoje or date.today()
+    if completo is None:
+        completo = datetime.now().hour == HORA_COMPLETA or not MovEstoqueOmie.objects.exists()
+    inicio = MOV_INICIO if completo else max(MOV_INICIO, (hoje.replace(day=1) - timedelta(days=1)).replace(day=1))
+    produtos = [_produto(p) for p in paginar("geral/produtos/", "ListarProdutos", "produto_servico_cadastro",
+                                             {"apenas_importado_api": "N", "filtrar_apenas_omiepdv": "N"}, por_pagina=100)]
+    produtos = [p for p in produtos if p["codigo_produto"]]
+    locais = list(_pag_estoque("estoque/local/", "ListarLocaisEstoque", "locaisEncontrados", {}))
+    nome_local = {l["codigo_local_estoque"]: (l.get("descricao") or l.get("codigo") or "")[:80] for l in locais}
+    posicao = []
+    for l in locais:
+        if l.get("inativo") == "S":
+            continue
+        for p in _pag_estoque("estoque/consulta/", "ListarPosEstoque", "produtos",
+                              {"dDataPosicao": br(hoje), "cExibeTodos": "N", "codigo_local_estoque": l["codigo_local_estoque"]}):
+            saldo, cmc = dec(p.get("nSaldo")), dec(p.get("nCMC"))
+            posicao.append(dict(local=nome_local[l["codigo_local_estoque"]], local_codigo=(l.get("codigo") or "")[:10],
+                                codigo_produto=p.get("nCodProd"), codigo=str(p.get("cCodigo") or "")[:60],
+                                descricao=(p.get("cDescricao") or "")[:300], saldo=saldo, fisico=dec(p.get("fisico")),
+                                reservado=dec(p.get("reservado")), pendente=dec(p.get("nPendente")), minimo=dec(p.get("estoque_minimo")),
+                                custo_medio=cmc, preco=dec(p.get("nPrecoUnitario")), valor=round(saldo * cmc, 2)))
+    movs = {}
+    ativos = [l for l in locais if l.get("inativo") != "S"]
+    lista_movs = (m for a, b in _meses(inicio, hoje) for l in ativos
+                  for m in _pag_estoque("estoque/consulta/", "ListarMovimentoEstoque", "movProdutoListar",
+                                        {"dDtInicial": br(a), "dDtFinal": br(b), "codigo_local_estoque": l["codigo_local_estoque"]}))
+    for m in lista_movs:
+        d = data_omie(m.get("dtMov"))
+        if not m.get("idMov") or not d:
+            continue
+        movs[m["idMov"]] = dict(id_mov=m["idMov"], data=d, local=nome_local.get(m.get("codigo_local_estoque"), "")[:80],
+                                codigo_produto=m.get("idProd") or 0, descricao=(m.get("descricao") or "")[:300],
+                                tipo=(m.get("tipo") or "")[:10], origem=(m.get("codOrigem") or "")[:10],
+                                origem_desc=(m.get("desOrigem") or "")[:120], documento=str(m.get("numDoc") or "")[:60],
+                                pedido=str(m.get("numPedido") or "")[:120], quantidade=dec(m.get("qtde")), saldo=dec(m.get("saldo")),
+                                custo_medio=dec(m.get("cmc")), cancelado=m.get("cancelamento") == "S", devolucao=m.get("devolucao") == "S")
+    if not produtos and ProdutoOmie.objects.count() > 20:
+        raise OmieErro("Omie não devolveu nenhum produto; a cópia local do estoque foi mantida")
+    vistos = set()
+    posicao = [p for p in posicao if p["codigo_produto"] and (p["local"], p["codigo_produto"]) not in vistos
+               and not vistos.add((p["local"], p["codigo_produto"]))]
+    with transaction.atomic():
+        ProdutoOmie.objects.all().delete()
+        ProdutoOmie.objects.bulk_create([ProdutoOmie(**p) for p in produtos], batch_size=500)
+        EstoqueOmie.objects.all().delete()
+        EstoqueOmie.objects.bulk_create([EstoqueOmie(**p) for p in posicao], batch_size=500)
+        MovEstoqueOmie.objects.filter(data__gte=inicio).delete()
+        MovEstoqueOmie.objects.filter(id_mov__in=list(movs)).delete()
+        MovEstoqueOmie.objects.bulk_create([MovEstoqueOmie(**m) for m in movs.values()], batch_size=1000)
+    msg = (f"Estoque: {len(produtos)} produtos, {len(posicao)} saldos em {len(nome_local)} locais, {len(movs)} movimentações "
+           f"desde {inicio:%d/%m/%Y}" + (" (histórico completo)" if completo else ""))
+    saida(msg)
+    return msg

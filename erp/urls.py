@@ -3,7 +3,7 @@ from django.urls import path
 
 from . import faturamento as fat
 from . import financeiro as fin
-from . import favoritos, pedidos, problemas_views, usuarios, views
+from . import estoque, favoritos, pedidos, problemas_views, usuarios, views
 
 from . import auditoria
 
@@ -33,6 +33,10 @@ urlpatterns = [
     path("financeiro/extrato/", fin.extrato, name="fin_extrato"),
     path("faturamento/notas/", fat.notas, name="fat_notas"),
     path("faturamento/pedidos/", pedidos.lista, name="fat_pedidos"),
+    path("estoque/", estoque.posicao, name="est_posicao"),
+    path("estoque/movimentacoes/", estoque.movimentos, name="est_movimentos"),
+    path("estoque/produtos/", estoque.produtos, name="est_produtos"),
+    path("estoque/cobertura/", estoque.cobertura, name="est_cobertura"),
     path("faturamento/clientes/", fat.clientes, name="fat_clientes"),
     path("faturamento/vendedores/", fat.vendedores, name="fat_vendedores"),
     path("faturamento/produtos/", fat.produtos, name="fat_produtos"),

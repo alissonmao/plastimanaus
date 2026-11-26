@@ -1,0 +1,3 @@
+<div class="paginas"><span>Página {{ pag }} de {{ paginas }} · {{ n }} linhas</span>
+  {% if pag > 1 %}<a class="btn sec" href="?{{ qs_pag }}&p={{ pag|add:-1 }}">Anterior</a>{% else %}<span class="btn sec off">Anterior</span>{% endif %}
+  {% if pag < paginas %}<a class="btn sec" href="?{{ qs_pag }}&p={{ pag|add:1 }}">Próxima</a>{% else %}<span class="btn sec off">Próxima</span>{% endif %}</div>

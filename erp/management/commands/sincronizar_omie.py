@@ -49,6 +49,10 @@ class Command(BaseCommand):
                     omie.sincronizar_pedidos(saida=self.stdout.write)
                 except Exception as e:  # pedidos também são complemento
                     self.stderr.write(f"Pedidos de venda: {e}")
+                try:
+                    omie.sincronizar_estoque(saida=self.stdout.write)
+                except Exception as e:  # estoque também é complemento
+                    self.stderr.write(f"Estoque: {e}")
         except Exception as e:  # registra o erro para aparecer na tela
             reg.status, reg.mensagem = "erro", str(e)[:2000]
             raise CommandError(str(e))

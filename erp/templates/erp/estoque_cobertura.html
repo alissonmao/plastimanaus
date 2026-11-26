@@ -1,0 +1,20 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+{% include "erp/_estoque_topo.html" %}
+<div class="pb-areas"><a class="chip {% if not sit %}on{% endif %}" href="?">Todos <b>{{ total }}</b></a>
+  {% for s in situacoes %}<a class="chip {% if sit == s %}on{% endif %}" href="?sit={{ s|urlencode }}">{{ s }} <b>{{ cont|item:s|default:0 }}</b></a>{% endfor %}</div>
+{% if n_falta %}<div class="card" style="border-left:4px solid #c62828"><b>{{ n_falta }} produto{{ n_falta|pluralize }} sem estoque suficiente para os pedidos na etapa Faturar.</b> <span class="sub">Ordene pela coluna "Falta".</span></div>{% endif %}
+<form class="card filtros" method="get"><input type="hidden" name="sit" value="{{ sit }}">
+  <label>Buscar<input name="q" value="{{ q }}" placeholder="Produto ou código" style="width:240px"></label><button class="btn">Filtrar</button></form>
+<div class="card"><h2>Produto acabado · {{ n }}{% if n != total %} de {{ total }}{% endif %}</h2>
+  <div class="tabela" style="max-height:65vh"><table><tr>{% for c in cab %}<th class="{% if forloop.counter > 2 and forloop.counter != 7 and forloop.counter != 10 %}n{% endif %}"><a class="ord" href="{{ c.url }}">{{ c.t }} {{ c.seta }}</a></th>{% endfor %}</tr>
+  {% for r in itens %}<tr><td>{{ r.codigo|default:"—" }}</td><td class="cli" title="{{ r.descricao }}{% if r.familia %} · {{ r.familia }}{% endif %}">{{ r.descricao }}</td>
+    <td class="n">{{ r.saldo|num:0 }} {{ r.unidade }}</td><td class="n">{{ r.vendido|num:0 }}</td><td class="n">{{ r.media|num:1 }}</td>
+    <td class="n {% if r.situacao == 'Acaba logo' %}neg{% endif %}">{% if r.dias is not None %}{{ r.dias }}{% else %}–{% endif %}</td>
+    <td>{{ r.ultima|date:"d/m/Y"|default:"—" }}</td>
+    <td class="n">{% if r.em_pedidos %}{{ r.em_pedidos|num:0 }}{% else %}–{% endif %}</td><td class="n {% if r.falta %}neg{% endif %}">{% if r.falta %}{{ r.falta|num:0 }}{% else %}–{% endif %}</td>
+    <td><span class="tg cob-{{ r.situacao|slugify }}">{{ r.situacao }}</span></td></tr>
+  {% empty %}<tr><td colspan="10" class="vazio">Nenhum produto</td></tr>{% endfor %}</table></div>
+</div>
+<p class="helptext">Considera o local Produto Acabado. Média/dia = saídas por venda nos últimos {{ dias_venda }} dias ÷ {{ dias_venda }}. "Dura" = saldo ÷ média/dia; abaixo de {{ curta }} dias fica "Acaba logo". "Parado" = tem saldo e nenhuma saída há mais de {{ parado }} dias. "A faturar" soma os itens dos pedidos do Omie que estão na etapa Faturar.</p>
+{% endblock %}

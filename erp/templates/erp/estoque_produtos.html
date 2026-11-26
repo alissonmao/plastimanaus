@@ -1,0 +1,21 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+{% include "erp/_estoque_topo.html" %}
+<form class="card filtros" method="get">
+  <label>Família<select name="familia"><option value="">Todas</option>{% for f in op_fam %}<option {% if f == familia %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></label>
+  <label>Tipo<select name="tipo"><option value="">Todos</option>{% for t in op_tipo %}<option {% if t == tipo %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+  <label>Situação<select name="sit"><option value="ativos" {% if sit == 'ativos' %}selected{% endif %}>Ativos</option><option value="inativos" {% if sit == 'inativos' %}selected{% endif %}>Inativos</option><option value="todos" {% if sit == 'todos' %}selected{% endif %}>Todos</option></select></label>
+  <label>Buscar<input name="q" value="{{ q }}" placeholder="Descrição, código ou EAN" style="width:220px"></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a>
+</form>
+<div class="card"><h2>Produtos · {{ n }}{% if n != total %} de {{ total }}{% endif %}</h2>
+  <p class="sub">{{ n_ativos }} produtos ativos · {{ n_sem_minimo }} ativos sem estoque mínimo cadastrado no Omie</p>
+  <div class="tabela" style="max-height:65vh"><table><tr>{% for c in cab %}<th class="{% if forloop.counter > 6 %}n{% endif %}"><a class="ord" href="{{ c.url }}">{{ c.t }} {{ c.seta }}</a></th>{% endfor %}</tr>
+  {% for p in prods %}<tr {% if p.inativo %}style="opacity:.55"{% endif %}><td>{{ p.codigo }}</td><td class="cli" title="{{ p.descricao }}">{{ p.descricao }}{% if p.inativo %} <span class="tg ped-cancelado">inativo</span>{% endif %}</td>
+    <td>{{ p.familia|default:"—" }}</td><td>{{ p.tipo_item|default:"—" }}</td><td>{{ p.unidade }}</td><td>{{ p.ncm|default:"—" }}</td>
+    <td class="n">{{ p.peso_liquido|num:3 }}</td><td class="n">{% if p.estoque_minimo %}{{ p.estoque_minimo|num:0 }}{% else %}–{% endif %}</td>
+    <td class="n">{{ p.preco|brl }}</td><td class="n">{% if p.saldo %}{{ p.saldo|num:0 }}{% else %}–{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="10" class="vazio">Nenhum produto</td></tr>{% endfor %}</table></div>
+  {% include "erp/_estoque_paginas.html" %}
+</div>
+{% endblock %}

@@ -437,3 +437,72 @@ class PedidoItemOmie(models.Model):
 
     class Meta:
         db_table = "pedido_item_omie"
+
+
+class ProdutoOmie(models.Model):
+    """Cadastro de produtos do Omie (só leitura; atualizado de hora em hora)."""
+    codigo_produto = models.BigIntegerField("código Omie", unique=True)
+    codigo = models.CharField("código", max_length=60, db_index=True)
+    descricao = models.CharField("descrição", max_length=300)
+    familia = models.CharField("família", max_length=120, blank=True, db_index=True)
+    unidade = models.CharField(max_length=10, blank=True)
+    tipo_item = models.CharField("tipo", max_length=40, blank=True)
+    ncm = models.CharField(max_length=20, blank=True)
+    ean = models.CharField(max_length=30, blank=True)
+    peso_liquido = models.DecimalField(max_digits=14, decimal_places=4, default=0)
+    peso_bruto = models.DecimalField(max_digits=14, decimal_places=4, default=0)
+    estoque_minimo = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    preco = models.DecimalField("preço de venda", max_digits=16, decimal_places=4, default=0)
+    inativo = models.BooleanField(default=False)
+    alterado_em = models.DateField(null=True, blank=True)
+    sincronizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "produto_omie"
+        ordering = ["descricao"]
+
+
+class EstoqueOmie(models.Model):
+    """Posição de estoque por produto e local, como o Omie mostra hoje."""
+    local = models.CharField(max_length=80, db_index=True)
+    local_codigo = models.CharField(max_length=10, blank=True)
+    codigo_produto = models.BigIntegerField(db_index=True)
+    codigo = models.CharField(max_length=60, db_index=True)
+    descricao = models.CharField(max_length=300)
+    saldo = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    fisico = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    reservado = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    pendente = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    minimo = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    custo_medio = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    preco = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+    valor = models.DecimalField("valor em estoque", max_digits=18, decimal_places=2, default=0)
+    sincronizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "estoque_omie"
+        ordering = ["local", "descricao"]
+        constraints = [models.UniqueConstraint(fields=["local", "codigo_produto"], name="estoque_local_produto")]
+
+
+class MovEstoqueOmie(models.Model):
+    """Movimentação de estoque do Omie (entradas e saídas)."""
+    id_mov = models.BigIntegerField(unique=True)
+    data = models.DateField(db_index=True)
+    local = models.CharField(max_length=80, blank=True, db_index=True)
+    codigo_produto = models.BigIntegerField(db_index=True)
+    descricao = models.CharField(max_length=300)
+    tipo = models.CharField(max_length=10)  # entrada / saida
+    origem = models.CharField(max_length=10, blank=True, db_index=True)
+    origem_desc = models.CharField("origem", max_length=120, blank=True)
+    documento = models.CharField(max_length=60, blank=True)
+    pedido = models.CharField(max_length=120, blank=True)
+    quantidade = models.DecimalField(max_digits=16, decimal_places=4, default=0)  # negativa nas saídas
+    saldo = models.DecimalField("saldo depois", max_digits=16, decimal_places=4, default=0)
+    custo_medio = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    cancelado = models.BooleanField(default=False)
+    devolucao = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "mov_estoque_omie"
+        ordering = ["-data", "-id_mov"]

@@ -33,6 +33,12 @@ MENU = [
         ("fat_produtos", "Produtos", None),
         ("vendas_plasti", "Pedidos e metas (Plasti)", None),
     ]),
+    ("Estoque", "📦", [
+        ("est_posicao", "Posição de estoque", None),
+        ("est_movimentos", "Movimentações", None),
+        ("est_cobertura", "Cobertura", None),
+        ("est_produtos", "Produtos (Omie)", None),
+    ]),
     ("Produção", "🏭", [
         ("dashboard", "Chão de fábrica", None),
         ("apontamentos", "Apontamentos", None),

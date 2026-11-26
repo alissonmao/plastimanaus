@@ -1,0 +1,28 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+{% include "erp/_estoque_topo.html" %}
+<form class="card filtros" method="get">
+  <label>De<input type="date" name="de" value="{{ de|date:'Y-m-d' }}"></label>
+  <label>até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>
+  <label>Local<select name="local"><option value="">Todos</option>{% for l in op_local %}<option {% if l == local %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Origem<select name="origem"><option value="">Todas</option>{% for o in op_origem %}<option {% if o == origem %}selected{% endif %}>{{ o }}</option>{% endfor %}</select></label>
+  <label>Tipo<select name="tipo"><option value="">Entradas e saídas</option><option value="entrada" {% if tipo == 'entrada' %}selected{% endif %}>Entradas</option><option value="saida" {% if tipo == 'saida' %}selected{% endif %}>Saídas</option></select></label>
+  <label>Buscar<input name="q" value="{{ q }}" placeholder="Produto, nota ou pedido/OP" style="width:220px"></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a>
+</form>
+<div class="kpis k4">
+  <div class="kpi"><small>Movimentações</small><b>{{ n }}</b><em>{% if n_cancelados %}{{ n_cancelados }} canceladas (não somam){% else %}no período{% endif %}</em></div>
+  <div class="kpi"><small>Entradas</small><b class="ok">{{ entradas|num:0 }}</b><em>unidades</em></div>
+  <div class="kpi"><small>Saídas</small><b class="neg">{{ saidas|num:0 }}</b><em>unidades</em></div>
+  <div class="kpi"><small>Por origem</small><em>{% for o, v in por_origem|slice:":4" %}{{ o }}: {{ v.n }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</em></div>
+</div>
+<div class="card"><h2>Movimentações · {{ n }}</h2>
+  <div class="tabela" style="max-height:65vh"><table><tr><th>Data</th><th>Produto</th><th>Local</th><th>Origem</th><th>Nota</th><th>Pedido / OP</th><th class="n">Quantidade</th><th class="n">Saldo depois</th><th class="n">Custo médio</th></tr>
+  {% for m in movs %}<tr {% if m.cancelado %}style="opacity:.55"{% endif %}><td>{{ m.data|date:"d/m/Y" }}</td><td class="cli est" title="{{ m.descricao }}">{{ m.descricao }}</td><td>{{ m.local|default:"—" }}</td>
+    <td>{{ m.origem_desc|default:"—" }}{% if m.cancelado %} <span class="tg ped-cancelado">cancelado</span>{% endif %}{% if m.devolucao %} <span class="tg ped-faturar">devolução</span>{% endif %}</td>
+    <td>{{ m.documento|default:"—" }}</td><td>{{ m.pedido|default:"—" }}</td>
+    <td class="n {% if m.quantidade < 0 %}neg{% else %}ok{% endif %}">{% if m.quantidade > 0 %}+{% endif %}{{ m.quantidade|num:0 }}</td><td class="n">{{ m.saldo|num:0 }}</td><td class="n">{{ m.custo_medio|brl }}</td></tr>
+  {% empty %}<tr><td colspan="9" class="vazio">Nenhuma movimentação no período</td></tr>{% endfor %}</table></div>
+  {% include "erp/_estoque_paginas.html" %}
+</div>
+{% endblock %}

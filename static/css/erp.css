@@ -216,3 +216,5 @@ tr.clic{cursor:pointer}.tg.ped-faturado{background:#e4f3e6;color:var(--ok)}.tg.p
 .tg.ped-faturar{background:#fef3c7;color:#92400e}.tg.ped-pedido-de-venda,.tg.ped-propostaorcamento,.tg.ped-separar-estoque{background:#e0ecff;color:#1d4ed8}
 td.cli{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 tr.dre-g{cursor:pointer}tr.dre-g:hover td{background:var(--primary-2)}tr.dre-g .seta{display:inline-block;transition:transform .15s;color:var(--muted)}tr.dre-g.on .seta{transform:rotate(90deg)}.dre-acoes{display:flex;justify-content:flex-end;margin-bottom:8px}
+.tg.cob-acaba-logo,.tg.cob-sem-estoque{background:#fde2e2;color:#b91c1c}.tg.cob-ok{background:#e4f3e6;color:var(--ok)}.tg.cob-parado{background:#fef3c7;color:#92400e}.tg.cob-sem-venda-em-90-dias{background:#eef0f3;color:var(--muted)}
+td.cli.est{max-width:200px}

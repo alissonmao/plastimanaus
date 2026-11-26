@@ -14,7 +14,8 @@ from django.db.models import Max
 from django.utils import timezone
 
 from . import calculos as C
-from .models import Apontamento, FluxoCaixa, Maquina, MetaVendedor, PedidoOmie, SaldoContaOmie, SincronizacaoOmie, Venda
+from .models import (Apontamento, EstoqueOmie, FluxoCaixa, Maquina, MetaVendedor, PedidoOmie, ProdutoOmie, SaldoContaOmie,
+                     SincronizacaoOmie, Venda)
 
 log = logging.getLogger(__name__)
 Z = Decimal(0)
@@ -136,6 +137,7 @@ class Contexto:
             producao=f"Apontamentos até {dma(ap['d'])} · último lançado em {loc(ap['c'])}",
             cadastro="Cadastros do ERP e títulos do Omie",
             pedidos=f"Pedidos do Omie · atualizados em {loc(PedidoOmie.objects.aggregate(d=Max('sincronizado_em'))['d'])}",
+            estoque=f"Estoque do Omie · atualizado em {loc(EstoqueOmie.objects.aggregate(d=Max('sincronizado_em'))['d'])}",
             sistema="Integrações e importações",
         )
 
@@ -433,6 +435,106 @@ def r_pedido_parado_faturar(ctx):
                      itens, [("numero", "Pedido", "txt"), ("cliente", "Cliente", "txt"), ("vendedor", "Vendedor", "txt"),
                              ("previsao", "Previsão", "data"), ("desde", "Última mudança", "data"), ("dias", "Dias parado", "int"),
                              ("valor", "Valor", "brl")], total)
+
+
+# ===================================================================== Estoque
+def _q(v):
+    return int(round(v or 0))
+
+
+@regra("estoque_falta_pedidos", "Pedido a faturar sem estoque suficiente", "Estoque", CRITICO,
+       "Programe a produção desses produtos (ou transfira de outro local no Omie) antes de faturar. Se o saldo do Omie estiver "
+       "errado, faça o ajuste de estoque lá. Veja tudo em Estoque → Cobertura.",
+       fonte="estoque", link="est_cobertura")
+def r_estoque_falta_pedidos(ctx):
+    from .estoque import calcular_cobertura
+    itens = [dict(codigo=r["codigo"], produto=r["descricao"], saldo=_q(r["saldo"]), pedidos=_q(r["em_pedidos"]), falta=_q(r["falta"]))
+             for r in calcular_cobertura(ctx.hoje) if r["falta"] > 0]
+    if not itens:
+        return None
+    itens.sort(key=lambda x: -x["falta"])
+    return Resultado(f"{plural(len(itens), 'produto', 'produtos')} sem estoque para os pedidos na etapa Faturar",
+                     f"Maior falta: {itens[0]['produto']} — pedidos pedem {itens[0]['pedidos']}, há {itens[0]['saldo']} no Produto Acabado.",
+                     itens, [("codigo", "Código", "txt"), ("produto", "Produto", "txt"), ("saldo", "Saldo", "int"),
+                             ("pedidos", "Em pedidos a faturar", "int"), ("falta", "Falta", "int")],
+                     qtd=len(itens), extra=dict(sem_valor=True, rot_qtd="produtos"))
+
+
+@regra("estoque_negativo", "Estoque negativo", "Estoque", CRITICO,
+       "Saldo negativo indica saída lançada sem a entrada correspondente. Confira as movimentações do produto no Omie e lance "
+       "a entrada da ordem de produção ou o ajuste de estoque que faltou.",
+       fonte="estoque", link="est_posicao")
+def r_estoque_negativo(ctx):
+    itens = [dict(codigo=e.codigo, produto=e.descricao, local=e.local, saldo=_q(e.saldo))
+             for e in EstoqueOmie.objects.filter(saldo__lt=0)]
+    if not itens:
+        return None
+    itens.sort(key=lambda x: x["saldo"])
+    return Resultado(f"{plural(len(itens), 'produto', 'produtos')} com estoque negativo",
+                     f"Menor saldo: {itens[0]['produto']} ({itens[0]['saldo']}) em {itens[0]['local']}.",
+                     itens, [("codigo", "Código", "txt"), ("produto", "Produto", "txt"), ("local", "Local", "txt"), ("saldo", "Saldo", "int")],
+                     qtd=len(itens), extra=dict(sem_valor=True, rot_qtd="produtos"))
+
+
+@regra("estoque_abaixo_minimo", "Produto abaixo do estoque mínimo", "Estoque", ATENCAO,
+       "Programe a produção (ou a compra) para repor o estoque. Se o mínimo cadastrado no Omie estiver errado, ajuste-o no "
+       "cadastro do produto (Estoque → Produtos no Omie).",
+       fonte="estoque", link="est_posicao")
+def r_estoque_abaixo_minimo(ctx):
+    saldos = {}
+    for cod, sd in EstoqueOmie.objects.values_list("codigo_produto", "saldo"):
+        saldos[cod] = saldos.get(cod, 0) + sd
+    itens = []
+    for p in ProdutoOmie.objects.filter(inativo=False, estoque_minimo__gt=0):
+        sd = saldos.get(p.codigo_produto, 0)
+        if sd < p.estoque_minimo:
+            itens.append(dict(codigo=p.codigo, produto=p.descricao, saldo=_q(sd), minimo=_q(p.estoque_minimo), falta=_q(p.estoque_minimo - sd)))
+    if not itens:
+        return None
+    itens.sort(key=lambda x: -x["falta"])
+    return Resultado(f"{plural(len(itens), 'produto', 'produtos')} abaixo do estoque mínimo",
+                     f"Maior falta: {itens[0]['produto']} — tem {itens[0]['saldo']}, mínimo {itens[0]['minimo']}.",
+                     itens, [("codigo", "Código", "txt"), ("produto", "Produto", "txt"), ("saldo", "Saldo", "int"),
+                             ("minimo", "Mínimo", "int"), ("falta", "Falta", "int")],
+                     qtd=len(itens), extra=dict(sem_valor=True, rot_qtd="produtos"))
+
+
+@regra("estoque_parado", "Produto acabado parado", "Estoque", SABER,
+       "Estoque sem saída há mais de 90 dias prende dinheiro. Avalie promoção com os vendedores, ofereça aos clientes que "
+       "já compraram o produto ou reaproveite o material. Veja a lista em Estoque → Cobertura (situação Parado).",
+       fonte="estoque", link="est_cobertura")
+def r_estoque_parado(ctx):
+    from .estoque import calcular_cobertura
+    custo = {e.codigo_produto: e.custo_medio for e in EstoqueOmie.objects.filter(local_codigo="PA")}
+    itens = [dict(codigo=r["codigo"], produto=r["descricao"], saldo=_q(r["saldo"]), ultima=r["ultima"], dias=r["sem_saida"],
+                  valor=round(r["saldo"] * custo.get(r["codigo_produto"], 0), 2))
+             for r in calcular_cobertura(ctx.hoje) if r["situacao"] == "Parado"]
+    if not itens:
+        return None
+    itens.sort(key=lambda x: -x["valor"])
+    total = sum(i["valor"] for i in itens)
+    return Resultado(f"{plural(len(itens), 'produto parado', 'produtos parados')} há mais de 90 dias — {brl(total)} em estoque",
+                     f"Maior valor parado: {itens[0]['produto']} ({brl(itens[0]['valor'])}).",
+                     itens, [("codigo", "Código", "txt"), ("produto", "Produto", "txt"), ("saldo", "Saldo", "int"),
+                             ("ultima", "Última saída", "data"), ("dias", "Dias sem saída", "int"), ("valor", "Valor (custo)", "brl")],
+                     total)
+
+
+@regra("estoque_custo_suspeito", "Custo médio do estoque suspeito", "Estoque", SABER,
+       "No Omie, confira o custo do produto (entradas de ordem de produção sem custo ou ajuste inicial com valor errado) e "
+       "corrija com um ajuste de custo. Enquanto isso o valor do estoque fica errado.",
+       fonte="estoque", link="est_posicao")
+def r_estoque_custo_suspeito(ctx):
+    from .estoque import custo_suspeito
+    itens = [dict(codigo=e.codigo, produto=e.descricao, local=e.local, saldo=_q(e.saldo), custo=e.custo_medio, preco=e.preco)
+             for e in EstoqueOmie.objects.filter(saldo__gt=0) if custo_suspeito(e)]
+    if not itens:
+        return None
+    return Resultado(f"{plural(len(itens), 'produto', 'produtos')} com custo médio zerado ou muito baixo",
+                     "Custo médio menor que 2% do preço de venda (ou zerado) — o valor em estoque desses itens está errado.",
+                     itens, [("codigo", "Código", "txt"), ("produto", "Produto", "txt"), ("local", "Local", "txt"), ("saldo", "Saldo", "int"),
+                             ("custo", "Custo médio", "brl"), ("preco", "Preço de venda", "brl")],
+                     qtd=len(itens), extra=dict(sem_valor=True, rot_qtd="produtos"))
 
 
 # ===================================================================== Produção

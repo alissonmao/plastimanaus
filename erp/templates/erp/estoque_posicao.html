@@ -1,0 +1,30 @@
+{% extends "erp/base.html" %}{% load fmt %}
+{% block conteudo %}
+{% include "erp/_estoque_topo.html" %}
+<div class="kpis k4">
+  <div class="kpi" title="Saldo × custo médio do Omie, somando todos os locais"><small>Valor em estoque ⓘ</small><b>{{ valor_total|brl }}</b><em>{{ total }} saldos de produtos</em></div>
+  {% for l, v in locais|slice:":3" %}<a class="kpi" href="?local={{ l|urlencode }}"><small>{{ l }}</small><b>{{ v.valor|brl }}</b><em>{{ v.n }} produtos</em></a>{% endfor %}
+</div>
+{% if locais|length > 3 %}<p class="sub">Outros locais: {% for l, v in locais|slice:"3:" %}<a href="?local={{ l|urlencode }}">{{ l }}</a> {{ v.valor|brl }} ({{ v.n }}){% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+{% if fora %}<div class="card" style="border-left:4px solid #d97706"><b>{{ fora|length }} ite{{ fora|length|pluralize:"m,ns" }} que não {{ fora|length|pluralize:"é,são" }} para venda estão no local Produto Acabado — {{ fora_valor|brl }}.</b>
+  <span class="sub">{% for e in fora|slice:":4" %}{{ e.descricao|truncatechars:40 }} ({{ e.valor|brl }}){% if not forloop.last %} · {% endif %}{% endfor %}{% if fora|length > 4 %} · …{% endif %}.
+  Máquinas e equipamentos deveriam estar no local Ativo do Omie; enquanto isso, ficam de fora da cobertura e dos avisos de parado.</span></div>{% endif %}
+<form class="card filtros" method="get">
+  <label>Local<select name="local"><option value="">Todos</option>{% for l in op_local %}<option {% if l == local %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Família<select name="familia"><option value="">Todas</option>{% for f in op_fam %}<option {% if f == familia %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></label>
+  <label>Mostrar<select name="alerta"><option value="">Todos</option><option value="minimo" {% if alerta == 'minimo' %}selected{% endif %}>Abaixo do mínimo ({{ n_abaixo }})</option><option value="custo" {% if alerta == 'custo' %}selected{% endif %}>Custo médio suspeito ({{ n_suspeito }})</option></select></label>
+  <label>Buscar<input name="q" value="{{ q }}" placeholder="Produto ou código" style="width:220px"></label>
+  <button class="btn">Filtrar</button><a class="btn sec" href="?">Limpar</a>
+</form>
+<div class="card"><h2>Saldos · {{ n }}{% if n != total %} de {{ total }}{% endif %} · {{ valor_filtro|brl }}</h2>
+  <div class="tabela" style="max-height:65vh"><table><tr>{% for c in cab %}<th class="{% if forloop.counter > 4 %}n{% endif %}"><a class="ord" href="{{ c.url }}">{{ c.t }} {{ c.seta }}</a></th>{% endfor %}</tr>
+  {% for e in itens %}<tr><td>{{ e.codigo }}</td><td class="cli est" title="{{ e.descricao }}">{{ e.descricao }}</td><td>{{ e.familia|default:"—" }}</td><td>{{ e.local }}</td>
+    <td class="n {% if e.abaixo %}neg{% endif %}" {% if e.abaixo %}title="Abaixo do mínimo"{% endif %}>{{ e.saldo|num:0 }} {{ e.unidade }}</td><td class="n">{{ e.reservado|num:0 }}</td><td class="n">{{ e.pendente|num:0 }}</td>
+    <td class="n">{% if e.minimo %}{{ e.minimo|num:0 }}{% else %}–{% endif %}</td>
+    <td class="n">{{ e.custo_medio|brl }}{% if e.suspeito %} <span class="tg ped-faturar" title="Custo médio zerado ou muito abaixo do preço de venda ({{ e.preco|brl }}): corrija o custo no Omie">custo?</span>{% endif %}</td>
+    <td class="n">{{ e.valor|brl }}</td></tr>
+  {% empty %}<tr><td colspan="10" class="vazio">Nenhum saldo</td></tr>{% endfor %}</table></div>
+  {% include "erp/_estoque_paginas.html" %}
+</div>
+<p class="helptext">Saldo, reservado e custo médio vêm do Omie. "Em pedidos" é a quantidade que o Omie mostra como pendente em pedidos. Valor em estoque = saldo × custo médio; itens marcados com "custo?" têm o custo zerado ou muito abaixo do preço e deixam o valor errado até serem corrigidos no Omie.</p>
+{% endblock %}
